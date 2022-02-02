@@ -1,4 +1,6 @@
 """Naively merge all masks that have sufficient overlap and probability."""
+from typing import Iterable
+
 import numpy as np
 from stardist.geometry.geom3d import polyhedron_to_label
 from stardist.utils import _normalize_grid
@@ -13,7 +15,7 @@ def mesh_from_shape(shape):
     return np.stack(mesh, axis=-1)
 
 
-def points_from_grid(shape, grid):
+def points_from_grid(shape, grid: Iterable[int]):
     """Generate array giving out points for indices."""
     mesh = mesh_from_shape(shape)
     grid = _normalize_grid(grid, 3)
@@ -61,7 +63,9 @@ def slice_point(point, max_dist):
     return slices, centered_point
 
 
-def naive_fusion(dists, probs, rays, prob_thresh=0.5, grid=2):
+def naive_fusion(
+    dists, probs, rays, prob_thresh: float = 0.5, grid: Iterable[int] = (2, 2, 2)
+):
     """Merge overlapping masks given by dists, probs, rays."""
     new_probs = np.copy(probs)
     shape = new_probs.shape
@@ -75,10 +79,10 @@ def naive_fusion(dists, probs, rays, prob_thresh=0.5, grid=2):
 
     lbl = np.zeros(shape, dtype=np.uint16)
 
-    big_shape = tuple(s * grid for s in shape)
+    big_shape = tuple(s * g for s, g in zip(shape, grid))
     big_lbl = np.zeros(big_shape, dtype=np.uint16)
 
-    max_dist = int(dists.max() / grid * 2)
+    max_dist = int(dists.max() / grid.min() * 2)
 
     big_max_dist = int(dists.max() * 2)
 
