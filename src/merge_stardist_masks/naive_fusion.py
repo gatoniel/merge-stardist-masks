@@ -157,17 +157,15 @@ def naive_fusion(dists, probs, rays, prob_thresh=0.5, grid=2):
                 > 0
             )
 
-            if (
-                np.sum(np.logical_and(new_shape, additional_shape))
-                == additional_shape.sum()
-            ):
-                full_overlaps += 1
-                continue
+            size_of_current_shape = np.sum(new_shape)
 
             new_shape = np.logical_or(
                 new_shape,
                 additional_shape,
             )
+            if size_of_current_shape == np.sum(new_shape):
+                full_overlaps += 1
+                continue
 
             big_new_shape_dists.append(current_dists[new_shape, :][max_ind_within, :])
             big_new_shape_points.append(
