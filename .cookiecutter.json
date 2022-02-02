@@ -1,0 +1,12 @@
+{
+  "_template": "gh:cjolowicz/cookiecutter-hypermodern-python",
+  "author": "Niklas Netter",
+  "development_status": "Development Status :: 1 - Planning",
+  "email": "niknett@gmail.com",
+  "friendly_name": "Merge Stardist Masks",
+  "github_user": "gatoniel",
+  "license": "MIT",
+  "package_name": "merge_stardist_masks",
+  "project_name": "merge-stardist-masks",
+  "version": "0.0.0"
+}
