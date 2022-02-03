@@ -70,6 +70,8 @@ def naive_fusion(
     new_probs = np.copy(probs)
     shape = new_probs.shape
 
+    grid = np.array(grid)
+
     points = mesh_from_shape(probs.shape)
 
     inds_thresh = new_probs > prob_thresh
