@@ -69,6 +69,7 @@ def naive_fusion(
     """Merge overlapping masks given by dists, probs, rays."""
     shape = probs.shape
     grid = np.array(grid)
+
     big_shape = tuple(s * g for s, g in zip(shape, grid))
 
     new_probs = -np.ones(big_shape)
