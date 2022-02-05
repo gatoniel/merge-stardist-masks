@@ -156,17 +156,15 @@ def naive_fusion(
                 > 0
             )
 
-            if (
-                np.sum(np.logical_and(new_shape, additional_shape))
-                == additional_shape.sum()
-            ):
-                full_overlaps += 1
-                continue
+            size_of_current_shape = np.sum(new_shape)
 
             new_shape = np.logical_or(
                 new_shape,
                 additional_shape,
             )
+            if size_of_current_shape == np.sum(new_shape):
+                full_overlaps += 1
+                continue
 
         current_probs[new_shape] = -1
         new_probs[slices] = current_probs
