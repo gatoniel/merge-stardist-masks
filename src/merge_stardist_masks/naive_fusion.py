@@ -67,30 +67,31 @@ def naive_fusion(
     dists, probs, rays, prob_thresh: float = 0.5, grid: Iterable[int] = (2, 2, 2)
 ):
     """Merge overlapping masks given by dists, probs, rays."""
-    new_probs = np.copy(probs)
-    shape = new_probs.shape
-
+    shape = probs.shape
     grid = np.array(grid)
+    big_shape = tuple(s * g for s, g in zip(shape, grid))
 
-    points = mesh_from_shape(probs.shape)
+    new_probs = -np.ones(big_shape)
+    new_probs[:: grid[0], :: grid[1], :: grid[2]] = probs
+
+    points_ = mesh_from_shape(probs.shape)
+    points = np.zeros(big_shape, dtype=int)
+    points[:: grid[0], :: grid[1], :: grid[2], :] = points_ * grid.reshape(1, 3)
 
     inds_thresh = new_probs > prob_thresh
     sum_thresh = np.sum(inds_thresh)
 
     prob_sort = np.argsort(new_probs, axis=None)[::-1][:sum_thresh]
 
-    lbl = np.zeros(shape, dtype=np.uint16)
+    lbl = np.zeros(big_shape, dtype=np.uint16)
 
-    big_shape = tuple(s * g for s, g in zip(shape, grid))
-    big_lbl = np.zeros(big_shape, dtype=np.uint16)
-
-    max_dist = int(dists.max() / grid.min() * 2)
-
-    big_max_dist = int(dists.max() * 2)
+    max_dist = int(dists.max() * 2)
 
     sorted_probs_j = 0
     current_id = 1
     while True:
+        # In case this is always a view of new_probs that changes when new_probs changes
+        # this line should be placed outside of this while-loop.
         newly_sorted_probs = np.take_along_axis(new_probs, prob_sort, axis=None)
 
         while sorted_probs_j < sum_thresh:
@@ -113,19 +114,13 @@ def naive_fusion(
 
         new_shape = (
             my_polyhedron_to_label(
-                dists[z, y, x, :] / grid,
+                dists[z, y, x, :],
                 point,  # points[z, y, x, :],
                 rays,
                 shape_paint,
             )
             == 1
         )
-
-        big_slices, big_point = slice_point(points[z, y, x, :] * grid, big_max_dist)
-        big_shape_paint = big_lbl[big_slices].shape
-
-        big_new_shape_dists = [dists[z, y, x, :]]
-        big_new_shape_points = [big_point]
 
         current_probs = new_probs[slices]
         tmp_slices = tuple(
@@ -153,7 +148,7 @@ def naive_fusion(
 
             additional_shape = (
                 my_polyhedron_to_label(
-                    current_dists[new_shape, :][max_ind_within, :] / grid,
+                    current_dists[new_shape, :][max_ind_within, :],
                     point
                     + current_points[new_shape, :][max_ind_within, :]
                     - points[z, y, x, :],
@@ -175,23 +170,6 @@ def naive_fusion(
                 additional_shape,
             )
 
-            big_new_shape_dists.append(current_dists[new_shape, :][max_ind_within, :])
-            big_new_shape_points.append(
-                big_point
-                + (current_points[new_shape, :][max_ind_within, :] - points[z, y, x, :])
-                * grid
-            )
-
-        big_new_shape = (
-            my_polyhedron_list_to_label(
-                big_new_shape_dists,
-                big_new_shape_points,
-                rays,
-                big_shape_paint,
-            )
-            > 0
-        )
-
         current_probs[new_shape] = -1
         new_probs[slices] = current_probs
 
@@ -199,10 +177,9 @@ def naive_fusion(
         paint_in[new_shape] = current_id
         lbl[slices] = paint_in
 
-        big_paint_in = big_lbl[big_slices]
-        big_paint_in[big_new_shape] = current_id
-        big_lbl[big_slices] = big_paint_in
-
         current_id += 1
 
-    return lbl, big_lbl
+    return (
+        lbl,
+        lbl,
+    )  # returning two lbls is legacy code due to previously returning big_lbl
