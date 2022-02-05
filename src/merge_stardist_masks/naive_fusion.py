@@ -107,9 +107,6 @@ def naive_fusion(
         z, y, x = max_ind
         new_probs[z, y, x] = -1
 
-        slices = []
-        for a in [z, y, x]:
-            slices.append(slice(max(0, a - max_dist), a + max_dist + 1))
         slices, point = slice_point(points[z, y, x, :], max_dist)
         shape_paint = lbl[slices].shape
 
