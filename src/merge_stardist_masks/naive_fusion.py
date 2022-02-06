@@ -73,7 +73,7 @@ def inflate_array(x, grid, default_value=0):
             slices.append(slice(None, None, grid[i]))
         except IndexError:
             slices.append(slice(None))
-    new_x[slices] = x
+    new_x[tuple(slices)] = x
     return new_x
 
 
