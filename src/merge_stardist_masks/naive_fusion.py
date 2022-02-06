@@ -168,7 +168,6 @@ def naive_fusion(
             )
             if size_of_current_shape == np.sum(new_shape):
                 full_overlaps += 1
-                continue
 
         current_probs[new_shape] = -1
         new_probs[slices] = current_probs
@@ -179,4 +178,4 @@ def naive_fusion(
 
         current_id += 1
 
-        return lbl
+    return lbl
