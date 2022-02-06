@@ -6,7 +6,7 @@ from stardist.geometry.geom3d import polyhedron_to_label
 from stardist.utils import _normalize_grid
 
 
-def mesh_from_shape(shape):
+def mesh_from_shape(shape: Iterable[int]):
     """Convenience function to generate a mesh."""
     offsets = []
     for i in range(len(shape)):
@@ -15,10 +15,10 @@ def mesh_from_shape(shape):
     return np.stack(mesh, axis=-1)
 
 
-def points_from_grid(shape, grid: Iterable[int]):
+def points_from_grid(shape: Iterable[int], grid: Iterable[int]):
     """Generate array giving out points for indices."""
     mesh = mesh_from_shape(shape)
-    grid = np.array(_normalize_grid(grid, 3)).reshape(1, 3)
+    grid = np.array(_normalize_grid(grid, len(shape))).reshape(1, len(shape))
     return mesh * grid
 
 
@@ -33,18 +33,7 @@ def my_polyhedron_to_label(dists, points, rays, shape):
     )
 
 
-def my_polyhedron_list_to_label(dists, points, rays, shape):
-    """Convenience function to pass lists of 1-d arrays to polyhedron_to_label."""
-    return polyhedron_to_label(
-        np.clip(np.array(dists), 1e-3, None),
-        np.array(points),
-        rays,
-        shape,
-        verbose=False,
-    )
-
-
-def slice_point(point, max_dist):
+def slice_point(point: Iterable[int], max_dist: int):
     """Calculate the extents of a slice for a given point and its coordinates within."""
     slices = []
     centered_point = []
@@ -61,8 +50,11 @@ def slice_point(point, max_dist):
     return slices, centered_point
 
 
-def inflate_array(x, grid, default_value=0):
+def inflate_array(x, grid: Iterable[int], default_value=0):
     """Create new array with increased shape but old values of x."""
+    if x.ndim < len(grid):
+        raise ValueError("x.ndim must be >= len(grid)")
+    # len(new_shape) will be len(grid)
     new_shape = tuple(s * g for s, g in zip(x.shape, grid))
     if x.ndim > len(new_shape):
         new_shape = new_shape + tuple(x.shape[len(new_shape) :])
@@ -176,7 +168,6 @@ def naive_fusion(
             )
             if size_of_current_shape == np.sum(new_shape):
                 full_overlaps += 1
-                continue
 
         current_probs[new_shape] = -1
         new_probs[slices] = current_probs
@@ -187,7 +178,4 @@ def naive_fusion(
 
         current_id += 1
 
-    return (
-        lbl,
-        lbl,
-    )  # returning two lbls is legacy code due to previously returning big_lbl
+    return lbl
