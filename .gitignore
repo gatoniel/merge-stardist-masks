@@ -1,3 +1,4 @@
+*.swp
 .mypy_cache/
 /.coverage
 /.coverage.*
