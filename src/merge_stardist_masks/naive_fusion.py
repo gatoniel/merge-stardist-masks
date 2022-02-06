@@ -1,6 +1,5 @@
 """Naively merge all masks that have sufficient overlap and probability."""
 from typing import Iterable
-from typing import Union
 
 import numpy as np
 from stardist.geometry.geom3d import polyhedron_to_label
@@ -16,7 +15,7 @@ def mesh_from_shape(shape: Iterable[int]):
     return np.stack(mesh, axis=-1)
 
 
-def points_from_grid(shape: Iterable[int], grid: Union[int, Iterable[int]]):
+def points_from_grid(shape: Iterable[int], grid: Iterable[int]):
     """Generate array giving out points for indices."""
     mesh = mesh_from_shape(shape)
     grid = np.array(_normalize_grid(grid, len(shape))).reshape(1, len(shape))
@@ -180,7 +179,4 @@ def naive_fusion(
 
         current_id += 1
 
-    return (
-        lbl,
-        lbl,
-    )  # returning two lbls is legacy code due to previously returning big_lbl
+        return lbl
