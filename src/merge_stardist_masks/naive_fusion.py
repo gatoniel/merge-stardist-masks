@@ -1,4 +1,6 @@
 """Naively merge all masks that have sufficient overlap and probability."""
+from typing import Iterable
+
 import numpy as np
 from stardist.geometry.geom3d import polyhedron_to_label
 from stardist.utils import _normalize_grid
@@ -13,13 +15,11 @@ def mesh_from_shape(shape):
     return np.stack(mesh, axis=-1)
 
 
-def points_from_grid(shape, grid):
+def points_from_grid(shape, grid: Iterable[int]):
     """Generate array giving out points for indices."""
     mesh = mesh_from_shape(shape)
-    grid = _normalize_grid(grid, 3)
-    for i in range(len(grid)):
-        mesh[..., i] *= grid[i]
-    return mesh
+    grid = np.array(_normalize_grid(grid, 3)).reshape(1, 3)
+    return mesh * grid
 
 
 def my_polyhedron_to_label(dists, points, rays, shape):
@@ -61,30 +61,50 @@ def slice_point(point, max_dist):
     return slices, centered_point
 
 
-def naive_fusion(dists, probs, rays, prob_thresh=0.5, grid=2):
-    """Merge overlapping masks given by dists, probs, rays."""
-    new_probs = np.copy(probs)
-    shape = new_probs.shape
+def inflate_array(x, grid, default_value=0):
+    """Create new array with increased shape but old values of x."""
+    new_shape = tuple(s * g for s, g in zip(x.shape, grid))
+    if x.ndim > len(new_shape):
+        new_shape = new_shape + tuple(x.shape[len(new_shape) :])
+    new_x = np.full(new_shape, default_value, dtype=x.dtype)
+    slices = []
+    for i in range(len(new_shape)):
+        try:
+            slices.append(slice(None, None, grid[i]))
+        except IndexError:
+            slices.append(slice(None))
+    new_x[tuple(slices)] = x
+    return new_x
 
-    points = mesh_from_shape(probs.shape)
+
+def naive_fusion(
+    dists, probs, rays, prob_thresh: float = 0.5, grid: Iterable[int] = (2, 2, 2)
+):
+    """Merge overlapping masks given by dists, probs, rays."""
+    shape = probs.shape
+    grid = np.array(grid)
+
+    big_shape = tuple(s * g for s, g in zip(shape, grid))
+    lbl = np.zeros(big_shape, dtype=np.uint16)
+
+    # this could also be done with np.repeat, but for probs it is important that some
+    # of the repeatet values are -1, as they should not be considered.
+    new_probs = inflate_array(probs, grid, default_value=-1)
+    points = inflate_array(points_from_grid(probs.shape, grid), grid, default_value=0)
+    dists = inflate_array(dists, grid, default_value=0)
 
     inds_thresh = new_probs > prob_thresh
     sum_thresh = np.sum(inds_thresh)
 
     prob_sort = np.argsort(new_probs, axis=None)[::-1][:sum_thresh]
 
-    lbl = np.zeros(shape, dtype=np.uint16)
-
-    big_shape = tuple(s * grid for s in shape)
-    big_lbl = np.zeros(big_shape, dtype=np.uint16)
-
-    max_dist = int(dists.max() / grid * 2)
-
-    big_max_dist = int(dists.max() * 2)
+    max_dist = int(dists.max() * 2)
 
     sorted_probs_j = 0
     current_id = 1
     while True:
+        # In case this is always a view of new_probs that changes when new_probs changes
+        # this line should be placed outside of this while-loop.
         newly_sorted_probs = np.take_along_axis(new_probs, prob_sort, axis=None)
 
         while sorted_probs_j < sum_thresh:
@@ -99,27 +119,18 @@ def naive_fusion(dists, probs, rays, prob_thresh=0.5, grid=2):
         z, y, x = max_ind
         new_probs[z, y, x] = -1
 
-        slices = []
-        for a in [z, y, x]:
-            slices.append(slice(max(0, a - max_dist), a + max_dist + 1))
         slices, point = slice_point(points[z, y, x, :], max_dist)
         shape_paint = lbl[slices].shape
 
         new_shape = (
             my_polyhedron_to_label(
-                dists[z, y, x, :] / grid,
+                dists[z, y, x, :],
                 point,  # points[z, y, x, :],
                 rays,
                 shape_paint,
             )
             == 1
         )
-
-        big_slices, big_point = slice_point(points[z, y, x, :] * grid, big_max_dist)
-        big_shape_paint = big_lbl[big_slices].shape
-
-        big_new_shape_dists = [dists[z, y, x, :]]
-        big_new_shape_points = [big_point]
 
         current_probs = new_probs[slices]
         tmp_slices = tuple(
@@ -147,7 +158,7 @@ def naive_fusion(dists, probs, rays, prob_thresh=0.5, grid=2):
 
             additional_shape = (
                 my_polyhedron_to_label(
-                    current_dists[new_shape, :][max_ind_within, :] / grid,
+                    current_dists[new_shape, :][max_ind_within, :],
                     point
                     + current_points[new_shape, :][max_ind_within, :]
                     - points[z, y, x, :],
@@ -157,34 +168,15 @@ def naive_fusion(dists, probs, rays, prob_thresh=0.5, grid=2):
                 > 0
             )
 
-            if (
-                np.sum(np.logical_and(new_shape, additional_shape))
-                == additional_shape.sum()
-            ):
-                full_overlaps += 1
-                continue
+            size_of_current_shape = np.sum(new_shape)
 
             new_shape = np.logical_or(
                 new_shape,
                 additional_shape,
             )
-
-            big_new_shape_dists.append(current_dists[new_shape, :][max_ind_within, :])
-            big_new_shape_points.append(
-                big_point
-                + (current_points[new_shape, :][max_ind_within, :] - points[z, y, x, :])
-                * grid
-            )
-
-        big_new_shape = (
-            my_polyhedron_list_to_label(
-                big_new_shape_dists,
-                big_new_shape_points,
-                rays,
-                big_shape_paint,
-            )
-            > 0
-        )
+            if size_of_current_shape == np.sum(new_shape):
+                full_overlaps += 1
+                continue
 
         current_probs[new_shape] = -1
         new_probs[slices] = current_probs
@@ -193,10 +185,9 @@ def naive_fusion(dists, probs, rays, prob_thresh=0.5, grid=2):
         paint_in[new_shape] = current_id
         lbl[slices] = paint_in
 
-        big_paint_in = big_lbl[big_slices]
-        big_paint_in[big_new_shape] = current_id
-        big_lbl[big_slices] = big_paint_in
-
         current_id += 1
 
-    return lbl, big_lbl
+    return (
+        lbl,
+        lbl,
+    )  # returning two lbls is legacy code due to previously returning big_lbl
