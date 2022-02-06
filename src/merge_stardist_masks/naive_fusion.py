@@ -18,10 +18,8 @@ def mesh_from_shape(shape):
 def points_from_grid(shape, grid: Iterable[int]):
     """Generate array giving out points for indices."""
     mesh = mesh_from_shape(shape)
-    grid = _normalize_grid(grid, 3)
-    for i in range(len(grid)):
-        mesh[..., i] *= grid[i]
-    return mesh
+    grid = np.array(_normalize_grid(grid, 3)).reshape(1, 3)
+    return mesh * grid
 
 
 def my_polyhedron_to_label(dists, points, rays, shape):
@@ -63,6 +61,22 @@ def slice_point(point, max_dist):
     return slices, centered_point
 
 
+def inflate_array(x, grid, default_value=0):
+    """Create new array with increased shape but old values of x."""
+    new_shape = tuple(s * g for s, g in zip(x.shape, grid))
+    if x.ndim > len(new_shape):
+        new_shape = new_shape + tuple(x.shape[len(new_shape) :])
+    new_x = np.full(new_shape, default_value, dtype=x.dtype)
+    slices = []
+    for i in range(len(new_shape)):
+        try:
+            slices.append(slice(None, None, grid[i]))
+        except IndexError:
+            slices.append(slice(None))
+    new_x[slices] = x
+    return new_x
+
+
 def naive_fusion(
     dists, probs, rays, prob_thresh: float = 0.5, grid: Iterable[int] = (2, 2, 2)
 ):
@@ -71,20 +85,18 @@ def naive_fusion(
     grid = np.array(grid)
 
     big_shape = tuple(s * g for s, g in zip(shape, grid))
+    lbl = np.zeros(big_shape, dtype=np.uint16)
 
-    new_probs = -np.ones(big_shape)
-    new_probs[:: grid[0], :: grid[1], :: grid[2]] = probs
-
-    points_ = mesh_from_shape(probs.shape)
-    points = np.zeros(big_shape, dtype=int)
-    points[:: grid[0], :: grid[1], :: grid[2], :] = points_ * grid.reshape(1, 3)
+    # this could also be done with np.repeat, but for probs it is important that some
+    # of the repeatet values are -1, as they should not be considered.
+    new_probs = inflate_array(probs, grid, default_value=-1)
+    points = inflate_array(points_from_grid(probs.shape, grid), grid, default_value=0)
+    dists = inflate_array(dists, grid, default_value=0)
 
     inds_thresh = new_probs > prob_thresh
     sum_thresh = np.sum(inds_thresh)
 
     prob_sort = np.argsort(new_probs, axis=None)[::-1][:sum_thresh]
-
-    lbl = np.zeros(big_shape, dtype=np.uint16)
 
     max_dist = int(dists.max() * 2)
 
