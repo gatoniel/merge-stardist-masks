@@ -1,7 +1,9 @@
 """Naively merge all masks that have sufficient overlap and probability."""
+from functools import partial
 from typing import Iterable
 
 import numpy as np
+from stardist.geometry.geom2d import polygons_to_label
 from stardist.geometry.geom3d import polyhedron_to_label
 from stardist.utils import _normalize_grid
 
@@ -22,7 +24,7 @@ def points_from_grid(shape: Iterable[int], grid: Iterable[int]):
     return mesh * grid
 
 
-def my_polyhedron_to_label(dists, points, rays, shape):
+def my_polyhedron_to_label(rays, dists, points, shape):
     """Convenience funtion to pass 1-d arrays to polyhedron_to_label."""
     return polyhedron_to_label(
         np.expand_dims(np.clip(dists, 1e-3, None), axis=0),
@@ -30,6 +32,15 @@ def my_polyhedron_to_label(dists, points, rays, shape):
         rays,
         shape,
         verbose=False,
+    )
+
+
+def my_polygons_to_label(dists, points, shape):
+    """Convenience funtion to pass 1-d arrays to polygons_to_label."""
+    return polygons_to_label(
+        np.expand_dims(np.clip(dists, 1e-3, None), axis=0),
+        np.expand_dims(points, axis=0),
+        shape,
     )
 
 
@@ -69,12 +80,27 @@ def inflate_array(x, grid: Iterable[int], default_value=0):
     return new_x
 
 
+def get_poly_to_label(shape, rays):
+    """Depending on len(shape) return different functions to calculate labels."""
+    if len(shape) == 2:
+        return my_polygons_to_label
+    elif len(shape) == 3:
+        if rays is not None:
+            return partial(my_polyhedron_to_label, rays)
+        else:
+            raise ValueError("For 3D postprocessing rays must be supplied.")
+    else:
+        raise ValueError("probs.ndim must either be 2 or 3")
+
+
 def naive_fusion(
-    dists, probs, rays, prob_thresh: float = 0.5, grid: Iterable[int] = (2, 2, 2)
+    dists, probs, rays=None, prob_thresh: float = 0.5, grid: Iterable[int] = (2, 2, 2)
 ):
     """Merge overlapping masks given by dists, probs, rays."""
     shape = probs.shape
     grid = np.array(grid)
+
+    poly_to_label = get_poly_to_label(shape, rays)
 
     big_shape = tuple(s * g for s, g in zip(shape, grid))
     lbl = np.zeros(big_shape, dtype=np.uint16)
@@ -108,21 +134,14 @@ def naive_fusion(
             break
 
         max_ind = np.unravel_index(max_ind, new_probs.shape)
-        z, y, x = max_ind
-        new_probs[z, y, x] = -1
+        new_probs[tuple(max_ind)] = -1
 
-        slices, point = slice_point(points[z, y, x, :], max_dist)
+        ind = tuple(max_ind) + (slice(None),)
+
+        slices, point = slice_point(points[ind], max_dist)
         shape_paint = lbl[slices].shape
 
-        new_shape = (
-            my_polyhedron_to_label(
-                dists[z, y, x, :],
-                point,  # points[z, y, x, :],
-                rays,
-                shape_paint,
-            )
-            == 1
-        )
+        new_shape = poly_to_label(dists[ind], point, shape_paint) == 1
 
         current_probs = new_probs[slices]
         tmp_slices = tuple(
@@ -149,12 +168,11 @@ def naive_fusion(
             current_probs[new_shape] = probs_within
 
             additional_shape = (
-                my_polyhedron_to_label(
+                poly_to_label(
                     current_dists[new_shape, :][max_ind_within, :],
                     point
                     + current_points[new_shape, :][max_ind_within, :]
-                    - points[z, y, x, :],
-                    rays,
+                    - points[ind],
                     shape_paint,
                 )
                 > 0
