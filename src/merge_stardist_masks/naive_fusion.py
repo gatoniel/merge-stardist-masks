@@ -1,10 +1,10 @@
 """Naively merge all masks that have sufficient overlap and probability."""
+from __future__ import annotations
+
 from functools import partial
 from typing import Callable
-from typing import Optional
 from typing import Tuple
 from typing import TypeVar
-from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -15,9 +15,10 @@ from stardist.utils import _normalize_grid  # type: ignore [import]
 
 
 T = TypeVar("T", bound=np.generic)
+ArrayLike = npt.ArrayLike
 
 
-def mesh_from_shape(shape: Tuple[int, ...]) -> npt.NDArray[np.int_]:
+def mesh_from_shape(shape: tuple[int, ...]) -> npt.NDArray[np.int_]:
     """Convenience function to generate a mesh."""
     offsets = []
     for i in range(len(shape)):
@@ -27,7 +28,7 @@ def mesh_from_shape(shape: Tuple[int, ...]) -> npt.NDArray[np.int_]:
 
 
 def points_from_grid(
-    shape: Tuple[int, ...], grid: Tuple[int, ...]
+    shape: tuple[int, ...], grid: tuple[int, ...]
 ) -> npt.NDArray[np.int_]:
     """Generate array giving out points for indices."""
     mesh = mesh_from_shape(shape)
@@ -36,8 +37,8 @@ def points_from_grid(
 
 
 def my_polyhedron_to_label(
-    rays: Rays_Base, dists: npt.ArrayLike, points: npt.ArrayLike, shape: Tuple[int, ...]
-) -> npt.NDArray[np.double]:
+    rays: Rays_Base, dists: ArrayLike, points: ArrayLike, shape: tuple[int, ...]
+) -> npt.NDArray[np.int_]:
     """Convenience funtion to pass 1-d arrays to polyhedron_to_label."""
     return polyhedron_to_label(  # type: ignore [no-any-return]
         np.expand_dims(  # type: ignore [no-untyped-call]
@@ -51,8 +52,8 @@ def my_polyhedron_to_label(
 
 
 def my_polygons_to_label(
-    dists: npt.ArrayLike, points: npt.ArrayLike, shape: Tuple[int, ...]
-) -> npt.NDArray[np.double]:
+    dists: ArrayLike, points: ArrayLike, shape: tuple[int, ...]
+) -> npt.NDArray[np.int_]:
     """Convenience funtion to pass 1-d arrays to polygons_to_label."""
     return polygons_to_label(  # type: ignore [no-any-return]
         np.expand_dims(  # type: ignore [no-untyped-call]
@@ -64,14 +65,29 @@ def my_polygons_to_label(
 
 
 PolyToLabelSignature = Callable[
-    [npt.ArrayLike, npt.ArrayLike, Tuple[int, ...]], npt.NDArray[np.double]
+    [ArrayLike, ArrayLike, Tuple[int, ...]], npt.NDArray[np.int_]
 ]
+
+
+def get_poly_to_label(
+    shape: tuple[int, ...], rays: Rays_Base | None
+) -> PolyToLabelSignature:
+    """Depending on len(shape) return different functions to calculate labels."""
+    if len(shape) == 2:
+        return my_polygons_to_label
+    elif len(shape) == 3:
+        if rays is not None:
+            return partial(my_polyhedron_to_label, rays)
+        else:
+            raise ValueError("For 3D postprocessing rays must be supplied.")
+    else:
+        raise ValueError("probs.ndim must either be 2 or 3")
 
 
 SlicePointReturn = Tuple[Tuple[slice, ...], npt.NDArray[np.int_]]
 
 
-def slice_point(point: npt.ArrayLike, max_dist: int) -> SlicePointReturn:
+def slice_point(point: ArrayLike, max_dist: int) -> SlicePointReturn:
     """Calculate the extents of a slice for a given point and its coordinates within."""
     slices_list = []
     centered_point = []
@@ -86,7 +102,7 @@ def slice_point(point: npt.ArrayLike, max_dist: int) -> SlicePointReturn:
     return tuple(slices_list), np.array(centered_point)
 
 
-def no_slicing_slice_point(point: npt.ArrayLike, max_dist: int) -> SlicePointReturn:
+def no_slicing_slice_point(point: ArrayLike, max_dist: int) -> SlicePointReturn:
     """Convenience function that returns the same point and tuple of slice(None)."""
     centered_point = np.squeeze(np.array(point))
     slices = (slice(None),) * len(centered_point)
@@ -94,7 +110,7 @@ def no_slicing_slice_point(point: npt.ArrayLike, max_dist: int) -> SlicePointRet
 
 
 def inflate_array(
-    x: npt.NDArray[T], grid: Tuple[int, ...], default_value: Union[int, float] = 0
+    x: npt.NDArray[T], grid: tuple[int, ...], default_value: int | float = 0
 ) -> npt.NDArray[T]:
     """Create new array with increased shape but old values of x."""
     if x.ndim < len(grid):
@@ -114,63 +130,46 @@ def inflate_array(
     return new_x
 
 
-def get_poly_to_label(
-    shape: Tuple[int, ...], rays: Optional[Rays_Base]
-) -> PolyToLabelSignature:
-    """Depending on len(shape) return different functions to calculate labels."""
-    if len(shape) == 2:
-        return my_polygons_to_label
-    elif len(shape) == 3:
-        if rays is not None:
-            return partial(my_polyhedron_to_label, rays)
-        else:
-            raise ValueError("For 3D postprocessing rays must be supplied.")
-    else:
-        raise ValueError("probs.ndim must either be 2 or 3")
-
-
 def naive_fusion(
     dists: npt.NDArray[np.double],
     probs: npt.NDArray[np.double],
-    rays: Optional[Rays_Base] = None,
+    rays: Rays_Base | None = None,
     prob_thresh: float = 0.5,
-    grid: Tuple[int, ...] = (2, 2, 2),
+    grid: tuple[int, ...] = (2, 2, 2),
     no_slicing: bool = False,
 ) -> npt.NDArray[np.uint16]:
     """Merge overlapping masks given by dists, probs, rays.
 
     Performs a naive iterative scheme to merge the masks that a StarDist network has
-    calculated to generate a label image. This function can perform 2D and 3D
-    segmentation. For 3D segmentation `rays` has to be passed from the StarDist model.
+    calculated to generate a label image.  This function can perform 2D and 3D
+    segmentation.  For 3D segmentation `rays` has to be passed from the StarDist model.
 
     Args:
-        dists: ndarray of type float, 3- or 4-dimensional.
-            Distances of each mask as outputed by a StarDist model. For 2D predictions
-            the shape is (len_y, len_x, n_rays), for 3D predictions it is
-            (len_z, len_y, len_x, n_rays).
-        probs: ndarry of type float, 2- or 3-dimensional.
-            Probabilities for each mask as outputed by a StarDist model. For 2D
-            predictions the shape is (len_y, len_x), for 3D predictions it is
-            (len_z, len_y, len_x).
-        rays: None (default) or class inheriting from stardist.rays3d.Rays_Base.
-            For 3D predictions `rays` must be set otherwise a `ValueError` is raised.
-        prob_thresh:
-            Only masks with probability above this threshold are considered.
+        dists: 3- or 4-dimensional array representing distances of each mask as outputed
+            by a StarDist model.  For 2D predictions the shape is
+            ``(len_y, len_x, n_rays)``, for 3D predictions it is
+            ``(len_z, len_y, len_x, n_rays)``.
+        probs: 2- or 3-dimensional array representing the probabilities for each mask as
+            outputed by a StarDist model.  For 2D predictions the shape is
+            ``(len_y, len_x)``, for 3D predictions it is ``(len_z, len_y, len_x)``.
+        rays: For 3D predictions `rays` must be set otherwise a ``ValueError`` is
+            raised.  It should be the :class:`Rays_Base` instance used by the StarDist
+            model.
+        prob_thresh: Only masks with probability above this threshold are considered.
         grid: Should be of length 2 for 2D and of length 3 for 3D segmentation.
             This is the grid information about the subsampling occuring in the StarDist
             model.
-        no_slicing:
-            For very big and winded objects this should be set to `True`. However, this
-            might result in longer calculation times.
+        no_slicing: For very big and winded objects this should be set to ``True``.
+            However, this might result in longer calculation times.
 
     Returns:
-        ndarray of type np.uint16: The label image. For 2D, the shape is
-        (len_y * grid[0], len_x * grid[1]) and for 3D it is
-        (len_z * grid[0], len_y * grid[1], len_z * grid[2]).
+        The label image with uint16 labels. For 2D, the shape is
+        ``(len_y * grid[0], len_x * grid[1])`` and for 3D it is
+        ``(len_z * grid[0], len_y * grid[1], len_z * grid[2])``.
 
     Raises:
-        ValueError: If rays is None and 3D inputs are given or when probs.ndim and
-            len(grid) do not match.  # noqa: DAR402 ValueError
+        ValueError: If `rays` is ``None`` and 3D inputs are given or when
+            ``probs.ndim != len(grid)``.  # noqa: DAR402 ValueError
 
     Example:
         >>> from merge_stardist_masks.naive_fusion import naive_fusion
