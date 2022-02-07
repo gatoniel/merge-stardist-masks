@@ -1,6 +1,7 @@
 """Test the naive_fusion implementations."""
 import numpy as np
 import pytest
+from stardist.geometry.geom2d import polygons_to_label
 from stardist.geometry.geom3d import polyhedron_to_label
 from stardist.rays3d import Rays_GoldenSpiral
 
@@ -165,7 +166,7 @@ def test_my_polyhedron_to_label():
     shape = (40, 40, 40)
     points = np.array(shape) / 2
 
-    my_label = nf.my_polyhedron_to_label(dists, points, rays, shape)
+    my_label = nf.my_polyhedron_to_label(rays, dists, points, shape)
 
     assert my_label.shape == shape
 
@@ -180,7 +181,27 @@ def test_my_polyhedron_to_label():
     np.testing.assert_array_equal(my_label, label)
 
 
-def test_naive_fusion():
+def test_my_polygons_to_label():
+    """Test that convenience function is not changed."""
+    n_rays = 40
+    dists = np.abs(np.random.standard_normal(n_rays))
+    shape = (40, 40)
+    points = np.array(shape) / 2
+
+    my_label = nf.my_polygons_to_label(dists, points, shape)
+
+    assert my_label.shape == shape
+
+    label = polygons_to_label(
+        np.expand_dims(np.clip(dists, 1e-3, None), axis=0),
+        np.expand_dims(points, axis=0),
+        shape,
+    )
+
+    np.testing.assert_array_equal(my_label, label)
+
+
+def test_naive_fusion_3d():
     """Test naive fusion with only two points that overlap."""
     n_rays = 40
     rays = Rays_GoldenSpiral(n=n_rays)
@@ -229,3 +250,141 @@ def test_naive_fusion():
     label[label == 3] = 2
 
     np.testing.assert_array_equal(lbl, label)
+
+
+def test_naive_fusion_2d():
+    """Test naive fusion with overlaping points in 2d."""
+    n_rays = 20
+
+    s = 8
+    shape = (s, s)
+    dists = np.zeros(shape + (n_rays,))
+    probs = np.zeros(shape)
+
+    # object 1 with several pixels that do not add to the shape
+    z0 = s // 4
+
+    # main point of this object
+    dist = 3
+    dists[z0, z0, :] = dist
+    probs[z0, z0] = 0.9
+
+    small_dist = 0.1
+    dists[z0 - 1, z0, :] = small_dist
+    probs[z0 - 1, z0] = 0.8
+    dists[z0, z0 - 1, :] = small_dist
+    probs[z0, z0 - 1] = 0.8
+    dists[z0 - 1, z0 - 1, :] = small_dist
+    probs[z0 - 1, z0 - 1] = 0.8
+
+    # object 2 composed of two pixels
+    z1 = s // 4 * 3
+    dists[z1, z1, :] = dist
+    probs[z1, z1] = 0.6
+
+    dists[z1 - 1, z1, :] = dist
+    probs[z1 - 1, z1] = 0.7
+
+    g = 2
+    lbl = nf.naive_fusion(dists, probs, grid=(g, g))
+
+    new_dists = np.full((3, n_rays), dist)
+    new_points = np.array([[z0, z0], [z1, z1], [z1 - 1, z1]]) * g
+
+    label = polygons_to_label(new_dists, new_points, tuple(s * g for s in shape))
+    # set labels to correct ids
+    label[label == 1] = 1
+    label[label == 2] = 2
+    label[label == 3] = 2
+    print(lbl)
+    print(label)
+
+    np.testing.assert_array_equal(lbl, label)
+
+
+def test_naive_fusion_2d_winding():
+    """Test naive fusion with a winding object in 2d."""
+    new_points = np.array(
+        [
+            [1, 1],
+            [1, 3],
+            [3, 3],
+            [3, 5],
+            [5, 5],
+            [5, 7],
+            [7, 7],
+            [7, 9],
+            [9, 9],
+            [9, 11],
+        ]
+    )
+    new_dists = np.array(
+        [
+            [3, 1, 1, 1],
+            [1, 3, 1, 1],
+            [3, 1, 1, 1],
+            [1, 3, 1, 1],
+            [3, 1, 1, 1],
+            [1, 3, 1, 1],
+            [3, 1, 1, 1],
+            [1, 3, 1, 1],
+            [3, 1, 1, 1],
+            [1, 3, 1, 1],
+        ]
+    )
+
+    n_rays = new_dists.shape[1]
+    s = 13
+    shape = (s, s)
+    dists = np.zeros(shape + (n_rays,))
+    probs = np.zeros(shape)
+
+    for i in range(len(new_points)):
+        y = new_points[i, 0]
+        x = new_points[i, 1]
+        probs[y, x] = 0.7 - i * 0.01
+        dists[y, x, :] = new_dists[i, :]
+
+    g = 1
+    lbl = nf.naive_fusion(dists, probs, grid=(g, g))
+    lbl_no_slicing = nf.naive_fusion(dists, probs, grid=(g, g), no_slicing=True)
+
+    label = polygons_to_label(new_dists, new_points, tuple(s * g for s in shape))
+    # set labels to correct ids
+    label[label > 0] = 1
+    print(lbl)
+    print(lbl_no_slicing)
+    print(probs)
+    print(label)
+
+    # lbl without slicing should not work in this case
+    np.testing.assert_raises(AssertionError, np.testing.assert_array_equal, lbl, label)
+    # lbl with slicing should work
+    np.testing.assert_array_equal(lbl_no_slicing, label)
+
+
+def test_value_error_because_of_shape_in_naive_fusion():
+    """Probs must be 2d or 3d, otherwise naive_fusion should raise ValueError."""
+    n_rays = 20
+    rays = Rays_GoldenSpiral(n=n_rays)
+
+    s = 6
+    shape = (s, s, s, s)
+    dists = np.zeros(shape + (n_rays,))
+    probs = np.zeros(shape)
+
+    with pytest.raises(ValueError):
+        nf.naive_fusion(dists, probs, rays)
+
+
+def test_value_error_with_3d_rays_in_naive_fusion():
+    """If called with probs.ndim = 3, rays must be supplied to naive_fusion."""
+    n_rays = 20
+
+    s = 6
+    shape = (s, s, s)
+    dists = np.zeros(shape + (n_rays,))
+    probs = np.zeros(shape)
+
+    with pytest.raises(ValueError):
+        nf.naive_fusion(dists, probs)
