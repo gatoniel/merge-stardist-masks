@@ -253,7 +253,7 @@ def test_naive_fusion_3d():
 
 
 def test_naive_fusion_2d():
-    """Test naive fusion with only two points that overlap."""
+    """Test naive fusion with overlaping points in 2d."""
     n_rays = 20
 
     s = 8
@@ -300,6 +300,67 @@ def test_naive_fusion_2d():
     print(label)
 
     np.testing.assert_array_equal(lbl, label)
+
+
+def test_naive_fusion_2d_winding():
+    """Test naive fusion with a winding object in 2d."""
+    new_points = np.array(
+        [
+            [1, 1],
+            [1, 3],
+            [3, 3],
+            [3, 5],
+            [5, 5],
+            [5, 7],
+            [7, 7],
+            [7, 9],
+            [9, 9],
+            [9, 11],
+        ]
+    )
+    new_dists = np.array(
+        [
+            [3, 1, 1, 1],
+            [1, 3, 1, 1],
+            [3, 1, 1, 1],
+            [1, 3, 1, 1],
+            [3, 1, 1, 1],
+            [1, 3, 1, 1],
+            [3, 1, 1, 1],
+            [1, 3, 1, 1],
+            [3, 1, 1, 1],
+            [1, 3, 1, 1],
+        ]
+    )
+
+    n_rays = new_dists.shape[1]
+    s = 13
+    shape = (s, s)
+    dists = np.zeros(shape + (n_rays,))
+    probs = np.zeros(shape)
+
+    for i in range(len(new_points)):
+        y = new_points[i, 0]
+        x = new_points[i, 1]
+        probs[y, x] = 0.7 - i * 0.01
+        dists[y, x, :] = new_dists[i, :]
+
+    g = 1
+    lbl = nf.naive_fusion(dists, probs, grid=(g, g))
+    lbl_no_slicing = nf.naive_fusion(dists, probs, grid=(g, g), no_slicing=True)
+
+    label = polygons_to_label(new_dists, new_points, tuple(s * g for s in shape))
+    # set labels to correct ids
+    label[label > 0] = 1
+    print(lbl)
+    print(lbl_no_slicing)
+    print(probs)
+    print(label)
+
+    # lbl without slicing should not work in this case
+    np.testing.assert_raises(AssertionError, np.testing.assert_array_equal, lbl, label)
+    # lbl with slicing should work
+    np.testing.assert_array_equal(lbl_no_slicing, label)
 
 
 def test_value_error_because_of_shape_in_naive_fusion():

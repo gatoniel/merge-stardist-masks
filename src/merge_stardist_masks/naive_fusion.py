@@ -61,6 +61,13 @@ def slice_point(point: Iterable[int], max_dist: int):
     return slices, centered_point
 
 
+def no_slicing_slice_point(point: Iterable[int], max_dist: int):
+    """Convenience function that returns the same point and tuple of slice(None)."""
+    centered_point = np.squeeze(np.array(point))
+    slices = (slice(None),) * len(centered_point)
+    return slices, centered_point
+
+
 def inflate_array(x, grid: Iterable[int], default_value=0):
     """Create new array with increased shape but old values of x."""
     if x.ndim < len(grid):
@@ -94,7 +101,12 @@ def get_poly_to_label(shape, rays):
 
 
 def naive_fusion(
-    dists, probs, rays=None, prob_thresh: float = 0.5, grid: Iterable[int] = (2, 2, 2)
+    dists,
+    probs,
+    rays=None,
+    prob_thresh: float = 0.5,
+    grid: Iterable[int] = (2, 2, 2),
+    no_slicing: bool = False,
 ):
     """Merge overlapping masks given by dists, probs, rays."""
     shape = probs.shape
@@ -117,6 +129,10 @@ def naive_fusion(
     prob_sort = np.argsort(new_probs, axis=None)[::-1][:sum_thresh]
 
     max_dist = int(dists.max() * 2)
+    if no_slicing:
+        this_slice_point = no_slicing_slice_point
+    else:
+        this_slice_point = slice_point
 
     sorted_probs_j = 0
     current_id = 1
@@ -138,7 +154,7 @@ def naive_fusion(
 
         ind = tuple(max_ind) + (slice(None),)
 
-        slices, point = slice_point(points[ind], max_dist)
+        slices, point = this_slice_point(points[ind], max_dist)
         shape_paint = lbl[slices].shape
 
         new_shape = poly_to_label(dists[ind], point, shape_paint) == 1
