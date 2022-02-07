@@ -1,4 +1,4 @@
-Merge Stardist Masks
+Merge StarDist Masks
 ====================
 
 |PyPI| |Status| |Python Version| |License|
@@ -60,7 +60,7 @@ Requirements
 Installation
 ------------
 
-You can install *Merge Stardist Masks* via pip_ from PyPI_:
+You can install *Merge StarDist Masks* via pip_ from PyPI_:
 
 .. code:: console
 
@@ -84,7 +84,7 @@ License
 -------
 
 Distributed under the terms of the `MIT license`_,
-*Merge Stardist Masks* is free and open source software.
+*Merge StarDist Masks* is free and open source software.
 
 
 Issues
