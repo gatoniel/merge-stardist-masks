@@ -1,76 +1,101 @@
 """Naively merge all masks that have sufficient overlap and probability."""
 from functools import partial
-from typing import Iterable
+from typing import Callable
 from typing import Optional
+from typing import Tuple
+from typing import TypeVar
+from typing import Union
 
 import numpy as np
-from stardist.geometry.geom2d import polygons_to_label
-from stardist.geometry.geom3d import polyhedron_to_label
-from stardist.rays3d import Rays_Base
-from stardist.utils import _normalize_grid
+import numpy.typing as npt
+from stardist.geometry.geom2d import polygons_to_label  # type: ignore [import]
+from stardist.geometry.geom3d import polyhedron_to_label  # type: ignore [import]
+from stardist.rays3d import Rays_Base  # type: ignore [import]
+from stardist.utils import _normalize_grid  # type: ignore [import]
 
 
-def mesh_from_shape(shape: Iterable[int]):
+T = TypeVar("T", bound=np.generic)
+
+
+def mesh_from_shape(shape: Tuple[int, ...]) -> npt.NDArray[np.int_]:
     """Convenience function to generate a mesh."""
     offsets = []
     for i in range(len(shape)):
         offsets.append(np.arange(shape[i]))
-    mesh = np.meshgrid(*offsets, indexing="ij")
+    mesh = np.meshgrid(*offsets, indexing="ij")  # type: ignore [no-untyped-call]
     return np.stack(mesh, axis=-1)
 
 
-def points_from_grid(shape: Iterable[int], grid: Iterable[int]):
+def points_from_grid(
+    shape: Tuple[int, ...], grid: Tuple[int, ...]
+) -> npt.NDArray[np.int_]:
     """Generate array giving out points for indices."""
     mesh = mesh_from_shape(shape)
-    grid = np.array(_normalize_grid(grid, len(shape))).reshape(1, len(shape))
-    return mesh * grid
+    grid_array = np.array(_normalize_grid(grid, len(shape))).reshape(1, len(shape))
+    return mesh * grid_array
 
 
-def my_polyhedron_to_label(rays, dists, points, shape):
+def my_polyhedron_to_label(
+    rays: Rays_Base, dists: npt.ArrayLike, points: npt.ArrayLike, shape: Tuple[int, ...]
+) -> npt.NDArray[np.double]:
     """Convenience funtion to pass 1-d arrays to polyhedron_to_label."""
-    return polyhedron_to_label(
-        np.expand_dims(np.clip(dists, 1e-3, None), axis=0),
-        np.expand_dims(points, axis=0),
+    return polyhedron_to_label(  # type: ignore [no-any-return]
+        np.expand_dims(  # type: ignore [no-untyped-call]
+            np.clip(dists, 1e-3, None), axis=0
+        ),
+        np.expand_dims(points, axis=0),  # type: ignore [no-untyped-call]
         rays,
         shape,
         verbose=False,
     )
 
 
-def my_polygons_to_label(dists, points, shape):
+def my_polygons_to_label(
+    dists: npt.ArrayLike, points: npt.ArrayLike, shape: Tuple[int, ...]
+) -> npt.NDArray[np.double]:
     """Convenience funtion to pass 1-d arrays to polygons_to_label."""
-    return polygons_to_label(
-        np.expand_dims(np.clip(dists, 1e-3, None), axis=0),
-        np.expand_dims(points, axis=0),
+    return polygons_to_label(  # type: ignore [no-any-return]
+        np.expand_dims(  # type: ignore [no-untyped-call]
+            np.clip(dists, 1e-3, None), axis=0
+        ),
+        np.expand_dims(points, axis=0),  # type: ignore [no-untyped-call]
         shape,
     )
 
 
-def slice_point(point: Iterable[int], max_dist: int):
+PolyToLabelSignature = Callable[
+    [npt.ArrayLike, npt.ArrayLike, Tuple[int, ...]], npt.NDArray[np.double]
+]
+
+
+SlicePointReturn = Tuple[Tuple[slice, ...], npt.NDArray[np.int_]]
+
+
+def slice_point(point: npt.ArrayLike, max_dist: int) -> SlicePointReturn:
     """Calculate the extents of a slice for a given point and its coordinates within."""
-    slices = []
+    slices_list = []
     centered_point = []
-    for a in point:
+    for a in np.array(point):
         diff = a - max_dist
         if diff < 0:
             centered_point.append(max_dist + diff)
             diff = 0
         else:
             centered_point.append(max_dist)
-        slices.append(slice(diff, a + max_dist + 1))
-    slices = tuple(slices)
-    centered_point = np.array(centered_point)
-    return slices, centered_point
+        slices_list.append(slice(diff, a + max_dist + 1))
+    return tuple(slices_list), np.array(centered_point)
 
 
-def no_slicing_slice_point(point: Iterable[int], max_dist: int):
+def no_slicing_slice_point(point: npt.ArrayLike, max_dist: int) -> SlicePointReturn:
     """Convenience function that returns the same point and tuple of slice(None)."""
     centered_point = np.squeeze(np.array(point))
     slices = (slice(None),) * len(centered_point)
     return slices, centered_point
 
 
-def inflate_array(x: np.ndarray, grid: Iterable[int], default_value=0):
+def inflate_array(
+    x: npt.NDArray[T], grid: Tuple[int, ...], default_value: Union[int, float] = 0
+) -> npt.NDArray[T]:
     """Create new array with increased shape but old values of x."""
     if x.ndim < len(grid):
         raise ValueError("x.ndim must be >= len(grid)")
@@ -89,7 +114,9 @@ def inflate_array(x: np.ndarray, grid: Iterable[int], default_value=0):
     return new_x
 
 
-def get_poly_to_label(shape, rays):
+def get_poly_to_label(
+    shape: Tuple[int, ...], rays: Optional[Rays_Base]
+) -> PolyToLabelSignature:
     """Depending on len(shape) return different functions to calculate labels."""
     if len(shape) == 2:
         return my_polygons_to_label
@@ -103,13 +130,13 @@ def get_poly_to_label(shape, rays):
 
 
 def naive_fusion(
-    dists: np.ndarray,
-    probs: np.ndarray,
+    dists: npt.NDArray[np.double],
+    probs: npt.NDArray[np.double],
     rays: Optional[Rays_Base] = None,
     prob_thresh: float = 0.5,
-    grid: Iterable[int] = (2, 2, 2),
+    grid: Tuple[int, ...] = (2, 2, 2),
     no_slicing: bool = False,
-) -> np.ndarray:
+) -> npt.NDArray[np.uint16]:
     """Merge overlapping masks given by dists, probs, rays.
 
     Performs a naive iterative scheme to merge the masks that a StarDist network has
@@ -153,7 +180,6 @@ def naive_fusion(
         >>> lbl = naive_fusion(dists, probs, rays, grid=model.config.grid)
     """
     shape = probs.shape
-    grid = np.array(grid)
 
     poly_to_label = get_poly_to_label(shape, rays)
 
@@ -166,7 +192,7 @@ def naive_fusion(
     points = inflate_array(points_from_grid(probs.shape, grid), grid, default_value=0)
     dists = inflate_array(dists, grid, default_value=0)
 
-    inds_thresh = new_probs > prob_thresh
+    inds_thresh: npt.NDArray[np.bool_] = new_probs > prob_thresh
     sum_thresh = np.sum(inds_thresh)
 
     prob_sort = np.argsort(new_probs, axis=None)[::-1][:sum_thresh]
@@ -182,7 +208,9 @@ def naive_fusion(
     while True:
         # In case this is always a view of new_probs that changes when new_probs changes
         # this line should be placed outside of this while-loop.
-        newly_sorted_probs = np.take_along_axis(new_probs, prob_sort, axis=None)
+        newly_sorted_probs = np.take_along_axis(  # type: ignore [no-untyped-call]
+            new_probs, prob_sort, axis=None
+        )
 
         while sorted_probs_j < sum_thresh:
             if newly_sorted_probs[sorted_probs_j] > 0:
@@ -226,7 +254,7 @@ def naive_fusion(
 
             current_probs[new_shape] = probs_within
 
-            additional_shape = (
+            additional_shape: npt.NDArray[np.bool_] = (
                 poly_to_label(
                     current_dists[new_shape, :][max_ind_within, :],
                     point
