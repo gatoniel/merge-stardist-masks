@@ -3,8 +3,10 @@ from __future__ import annotations
 
 from functools import partial
 from typing import Callable
+from typing import Optional
 from typing import Tuple
 from typing import TypeVar
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -18,7 +20,7 @@ T = TypeVar("T", bound=np.generic)
 ArrayLike = npt.ArrayLike
 
 
-def mesh_from_shape(shape: tuple[int, ...]) -> npt.NDArray[np.int_]:
+def mesh_from_shape(shape: Tuple[int, ...]) -> npt.NDArray[np.int_]:
     """Convenience function to generate a mesh."""
     offsets = []
     for i in range(len(shape)):
@@ -28,7 +30,7 @@ def mesh_from_shape(shape: tuple[int, ...]) -> npt.NDArray[np.int_]:
 
 
 def points_from_grid(
-    shape: tuple[int, ...], grid: tuple[int, ...]
+    shape: Tuple[int, ...], grid: Tuple[int, ...]
 ) -> npt.NDArray[np.int_]:
     """Generate array giving out points for indices."""
     mesh = mesh_from_shape(shape)
@@ -37,7 +39,7 @@ def points_from_grid(
 
 
 def my_polyhedron_to_label(
-    rays: Rays_Base, dists: ArrayLike, points: ArrayLike, shape: tuple[int, ...]
+    rays: Rays_Base, dists: ArrayLike, points: ArrayLike, shape: Tuple[int, ...]
 ) -> npt.NDArray[np.int_]:
     """Convenience funtion to pass 1-d arrays to polyhedron_to_label."""
     return polyhedron_to_label(  # type: ignore [no-any-return]
@@ -52,7 +54,7 @@ def my_polyhedron_to_label(
 
 
 def my_polygons_to_label(
-    dists: ArrayLike, points: ArrayLike, shape: tuple[int, ...]
+    dists: ArrayLike, points: ArrayLike, shape: Tuple[int, ...]
 ) -> npt.NDArray[np.int_]:
     """Convenience funtion to pass 1-d arrays to polygons_to_label."""
     return polygons_to_label(  # type: ignore [no-any-return]
@@ -70,7 +72,7 @@ PolyToLabelSignature = Callable[
 
 
 def get_poly_to_label(
-    shape: tuple[int, ...], rays: Rays_Base | None
+    shape: Tuple[int, ...], rays: Optional[Rays_Base]
 ) -> PolyToLabelSignature:
     """Depending on len(shape) return different functions to calculate labels."""
     if len(shape) == 2:
@@ -110,7 +112,7 @@ def no_slicing_slice_point(point: ArrayLike, max_dist: int) -> SlicePointReturn:
 
 
 def inflate_array(
-    x: npt.NDArray[T], grid: tuple[int, ...], default_value: int | float = 0
+    x: npt.NDArray[T], grid: Tuple[int, ...], default_value: Union[int, float] = 0
 ) -> npt.NDArray[T]:
     """Create new array with increased shape but old values of x."""
     if x.ndim < len(grid):
@@ -133,9 +135,9 @@ def inflate_array(
 def naive_fusion(
     dists: npt.NDArray[np.double],
     probs: npt.NDArray[np.double],
-    rays: Rays_Base | None = None,
+    rays: Optional[Rays_Base] = None,
     prob_thresh: float = 0.5,
-    grid: tuple[int, ...] = (2, 2, 2),
+    grid: Tuple[int, ...] = (2, 2, 2),
     no_slicing: bool = False,
 ) -> npt.NDArray[np.uint16]:
     """Merge overlapping masks given by dists, probs, rays.
