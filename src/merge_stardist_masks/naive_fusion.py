@@ -1,10 +1,12 @@
 """Naively merge all masks that have sufficient overlap and probability."""
 from functools import partial
 from typing import Iterable
+from typing import Optional
 
 import numpy as np
 from stardist.geometry.geom2d import polygons_to_label
 from stardist.geometry.geom3d import polyhedron_to_label
+from stardist.rays3d import Rays_Base
 from stardist.utils import _normalize_grid
 
 
@@ -68,7 +70,7 @@ def no_slicing_slice_point(point: Iterable[int], max_dist: int):
     return slices, centered_point
 
 
-def inflate_array(x, grid: Iterable[int], default_value=0):
+def inflate_array(x: np.ndarray, grid: Iterable[int], default_value=0):
     """Create new array with increased shape but old values of x."""
     if x.ndim < len(grid):
         raise ValueError("x.ndim must be >= len(grid)")
@@ -101,13 +103,13 @@ def get_poly_to_label(shape, rays):
 
 
 def naive_fusion(
-    dists,
-    probs,
-    rays=None,
+    dists: np.ndarray,
+    probs: np.ndarray,
+    rays: Optional[Rays_Base] = None,
     prob_thresh: float = 0.5,
     grid: Iterable[int] = (2, 2, 2),
     no_slicing: bool = False,
-):
+) -> np.ndarray:
     """Merge overlapping masks given by dists, probs, rays.
 
     Performs a naive iterative scheme to merge the masks that a StarDist network has
@@ -115,33 +117,33 @@ def naive_fusion(
     segmentation. For 3D segmentation `rays` has to be passed from the StarDist model.
 
     Args:
-        dists: ndarray of type float, 3- or 4-dimensional
+        dists: ndarray of type float, 3- or 4-dimensional.
             Distances of each mask as outputed by a StarDist model. For 2D predictions
             the shape is (len_y, len_x, n_rays), for 3D predictions it is
             (len_z, len_y, len_x, n_rays).
-        probs: ndarry of type float, 2- or 3-dimensional
+        probs: ndarry of type float, 2- or 3-dimensional.
             Probabilities for each mask as outputed by a StarDist model. For 2D
             predictions the shape is (len_y, len_x), for 3D predictions it is
             (len_z, len_y, len_x).
-        rays: None (default) or class inheriting from stardist.rays3d.Rays_Base
+        rays: None (default) or class inheriting from stardist.rays3d.Rays_Base.
             For 3D predictions `rays` must be set otherwise a `ValueError` is raised.
-        prob_thresh: float, 0.5 (default)
+        prob_thresh:
             Only masks with probability above this threshold are considered.
-        grid: Iterable of ints of len 2 (for 2D) or 3 (3D), (2, 2, 2) (default)
+        grid: Should be of length 2 for 2D and of length 3 for 3D segmentation.
             This is the grid information about the subsampling occuring in the StarDist
             model.
-        no_slicing: bool, False (default)
+        no_slicing:
             For very big and winded objects this should be set to `True`. However, this
             might result in longer calculation times.
 
     Returns:
-        lbl: ndarray of type np.uint16
-            The label image. The shape is (len_y * grid[0], len_x * grid[1]) for 2D and
-            (len_z * grid[0], len_y * grid[1], len_z * grid[2]) for 3D.
+        ndarray of type np.uint16: The label image. For 2D, the shape is
+        (len_y * grid[0], len_x * grid[1]) and for 3D it is
+        (len_z * grid[0], len_y * grid[1], len_z * grid[2]).
 
     Raises:
-        ValueError: If rays is None and 3D inputs are given or when  # noqa: DAR402
-            probs.ndim and len(grid) do not match.
+        ValueError: If rays is None and 3D inputs are given or when probs.ndim and
+            len(grid) do not match.  # noqa: DAR402 ValueError
 
     Example:
         >>> from merge_stardist_masks.naive_fusion import naive_fusion

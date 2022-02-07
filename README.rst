@@ -39,13 +39,22 @@ Merge Stardist Masks
 Features
 --------
 
-* TODO
+* This new post-processing step allows to use `StarDist`_ segmentation on
+  non-star-convex objects.
+
+  * Instead of NMS, this post-processing naively merges masks together
+
+  * Masks whos center points lie within another mask are added to that mask
+
+* Works in 2D and 3D
+
+* In 2D, it works on big and winding objects
 
 
 Requirements
 ------------
 
-* TODO
+* A `StarDist`_ installation.
 
 
 Installation
@@ -61,7 +70,7 @@ You can install *Merge Stardist Masks* via pip_ from PyPI_:
 Usage
 -----
 
-Please see the `Command-line Reference <Usage_>`_ for details.
+Please see the EXAMPLE in `Usage <Usage_>`_ for details.
 
 
 Contributing
@@ -97,6 +106,7 @@ This project was generated from `@cjolowicz`_'s `Hypermodern Python Cookiecutter
 .. _Hypermodern Python Cookiecutter: https://github.com/cjolowicz/cookiecutter-hypermodern-python
 .. _file an issue: https://github.com/gatoniel/merge-stardist-masks/issues
 .. _pip: https://pip.pypa.io/
+.. _StarDist: https://github.com/stardist/stardist
 .. github-only
 .. _Contributor Guide: CONTRIBUTING.rst
 .. _Usage: https://merge-stardist-masks.readthedocs.io/en/latest/usage.html

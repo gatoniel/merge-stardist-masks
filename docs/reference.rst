@@ -2,8 +2,8 @@ Reference
 =========
 
 
-merge_stardist_masks
---------------------
+merge_stardist_masks.naive_fusion
+---------------------------------
 
-.. automodule:: merge_stardist_masks
+.. automodule:: merge_stardist_masks.naive_fusion
    :members:

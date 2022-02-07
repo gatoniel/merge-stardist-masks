@@ -14,3 +14,4 @@
    Code of Conduct <codeofconduct>
    License <license>
    Changelog <https://github.com/gatoniel/merge-stardist-masks/releases>
+   GitHub <https://github.com/gatoniel/merge-stardist-masks>
