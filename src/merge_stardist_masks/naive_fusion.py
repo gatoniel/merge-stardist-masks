@@ -108,7 +108,48 @@ def naive_fusion(
     grid: Iterable[int] = (2, 2, 2),
     no_slicing: bool = False,
 ):
-    """Merge overlapping masks given by dists, probs, rays."""
+    """Merge overlapping masks given by dists, probs, rays.
+
+    Performs a naive iterative scheme to merge the masks that a StarDist network has
+    calculated to generate a label image. This function can perform 2D and 3D
+    segmentation. For 3D segmentation `rays` has to be passed from the StarDist model.
+
+    Args:
+        dists: ndarray of type float, 3- or 4-dimensional
+            Distances of each mask as outputed by a StarDist model. For 2D predictions
+            the shape is (len_y, len_x, n_rays), for 3D predictions it is
+            (len_z, len_y, len_x, n_rays).
+        probs: ndarry of type float, 2- or 3-dimensional
+            Probabilities for each mask as outputed by a StarDist model. For 2D
+            predictions the shape is (len_y, len_x), for 3D predictions it is
+            (len_z, len_y, len_x).
+        rays: None (default) or class inheriting from stardist.rays3d.Rays_Base
+            For 3D predictions `rays` must be set otherwise a `ValueError` is raised.
+        prob_thresh: float, 0.5 (default)
+            Only masks with probability above this threshold are considered.
+        grid: Iterable of ints of len 2 (for 2D) or 3 (3D), (2, 2, 2) (default)
+            This is the grid information about the subsampling occuring in the StarDist
+            model.
+        no_slicing: bool, False (default)
+            For very big and winded objects this should be set to `True`. However, this
+            might result in longer calculation times.
+
+    Returns:
+        lbl: ndarray of type np.uint16
+            The label image. The shape is (len_y * grid[0], len_x * grid[1]) for 2D and
+            (len_z * grid[0], len_y * grid[1], len_z * grid[2]) for 3D.
+
+    Raises:
+        ValueError: If rays is None and 3D inputs are given or when  # noqa: DAR402
+            probs.ndim and len(grid) do not match.
+
+    Example:
+        >>> from merge_stardist_masks.naive_fusion import naive_fusion
+        >>> from stardist.rays3d import rays_from_json
+        >>> dists, probs = model.predict(img)  # model is a 3D StarDist model
+        >>> rays = rays_from_json(model.config.rays_json)
+        >>> lbl = naive_fusion(dists, probs, rays, grid=model.config.grid)
+    """
     shape = probs.shape
     grid = np.array(grid)
 
