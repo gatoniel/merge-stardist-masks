@@ -176,7 +176,7 @@ def naive_fusion(
     Example:
         >>> from merge_stardist_masks.naive_fusion import naive_fusion
         >>> from stardist.rays3d import rays_from_json
-        >>> dists, probs = model.predict(img)  # model is a 3D StarDist model
+        >>> probs, dists = model.predict(img)  # model is a 3D StarDist model
         >>> rays = rays_from_json(model.config.rays_json)
         >>> lbl = naive_fusion(dists, probs, rays, grid=model.config.grid)
     """
