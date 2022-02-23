@@ -181,24 +181,25 @@ def naive_fusion(
         >>> lbl = naive_fusion(dists, probs, rays, grid=model.config.grid)
     """
     shape = probs.shape
+    grid_array = np.array(grid, dtype=int)
 
     poly_to_label = get_poly_to_label(shape, rays)
 
     big_shape = tuple(s * g for s, g in zip(shape, grid))
     lbl = np.zeros(big_shape, dtype=np.uint16)
 
+    # run max_dist before inflating dists
+    max_dist = int(dists.max() * 2)
     # this could also be done with np.repeat, but for probs it is important that some
     # of the repeatet values are -1, as they should not be considered.
     new_probs = inflate_array(probs, grid, default_value=-1)
     points = inflate_array(points_from_grid(probs.shape, grid), grid, default_value=0)
-    dists = inflate_array(dists, grid, default_value=0)
 
     inds_thresh: npt.NDArray[np.bool_] = new_probs > prob_thresh
     sum_thresh = np.sum(inds_thresh)
 
     prob_sort = np.argsort(new_probs, axis=None)[::-1][:sum_thresh]
 
-    max_dist = int(dists.max() * 2)
     if no_slicing:
         this_slice_point = no_slicing_slice_point
     else:
@@ -229,7 +230,13 @@ def naive_fusion(
         slices, point = this_slice_point(points[ind], max_dist)
         shape_paint = lbl[slices].shape
 
-        new_shape = poly_to_label(dists[ind], point, shape_paint) == 1
+        dists_ind = tuple(
+            list(points[ind] // grid_array)
+            + [
+                slice(None),
+            ]
+        )
+        new_shape = poly_to_label(dists[dists_ind], point, shape_paint) == 1
 
         current_probs = new_probs[slices]
         tmp_slices = tuple(
@@ -238,7 +245,6 @@ def naive_fusion(
                 slice(None),
             ]
         )
-        current_dists = dists[tmp_slices]
         current_points = points[tmp_slices]
 
         full_overlaps = 0
@@ -255,12 +261,17 @@ def naive_fusion(
 
             current_probs[new_shape] = probs_within
 
+            current_point = current_points[new_shape, :][max_ind_within, :]
+            dists_ind = tuple(
+                list(current_point // grid_array)
+                + [
+                    slice(None),
+                ]
+            )
             additional_shape: npt.NDArray[np.bool_] = (
                 poly_to_label(
-                    current_dists[new_shape, :][max_ind_within, :],
-                    point
-                    + current_points[new_shape, :][max_ind_within, :]
-                    - points[ind],
+                    dists[dists_ind],
+                    point + current_point - points[ind],
                     shape_paint,
                 )
                 > 0
