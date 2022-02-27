@@ -59,7 +59,7 @@ def my_polyhedron_list_to_label(
     """Convenience funtion to pass 1-d arrays to polyhedron_to_label."""
     return polyhedron_to_label(  # type: ignore [no-any-return]
         np.clip(np.array(dists), 1e-3, None),
-        np.array(points),  # type: ignore [no-untyped-call]
+        np.array(points),
         rays,
         shape,
         verbose=False,
@@ -85,7 +85,7 @@ def my_polygons_list_to_label(
     """Convenience funtion to pass 1-d arrays to polygons_to_label."""
     return polygons_to_label(  # type: ignore [no-any-return]
         np.clip(np.array(dists), 1e-3, None),
-        np.array(points),  # type: ignore [no-untyped-call]
+        np.array(points),
         shape,
     )
 
@@ -219,7 +219,7 @@ def naive_fusion(
         >>> rays = rays_from_json(model.config.rays_json)
         >>> lbl = naive_fusion(dists, probs, rays, grid=model.config.grid)
     """
-    if len(np.unique(grid)) == 1:
+    if len(np.unique(grid)) == 1:  # type: ignore [no-untyped-call]
         return naive_fusion_isotropic_grid(
             dists, probs, rays, prob_thresh, grid[0], no_slicing
         )
@@ -277,7 +277,7 @@ def naive_fusion_isotropic_grid(
         >>> grid = model.config.grid[0]
         >>> lbl = naive_fusion_isotropic_grid(dists, probs, rays, grid=grid)
     """
-    new_probs = np.copy(probs)
+    new_probs = np.copy(probs)  # type: ignore [no-untyped-call]
     shape = new_probs.shape
 
     poly_to_label = get_poly_to_label(shape, rays)
@@ -307,7 +307,9 @@ def naive_fusion_isotropic_grid(
     sorted_probs_j = 0
     current_id = 1
     while True:
-        newly_sorted_probs = np.take_along_axis(new_probs, prob_sort, axis=None)
+        newly_sorted_probs = np.take_along_axis(  # type: ignore [no-untyped-call]
+            new_probs, prob_sort, axis=None
+        )
 
         while sorted_probs_j < sum_thresh:
             if newly_sorted_probs[sorted_probs_j] > 0:
@@ -366,7 +368,7 @@ def naive_fusion_isotropic_grid(
 
             this_dist = current_dists[new_shape, :][max_ind_within, :]
             this_point = current_points[new_shape, :][max_ind_within, :]
-            additional_shape = (
+            additional_shape: npt.NDArray[np.bool_] = (
                 poly_to_label(
                     this_dist / grid,
                     point + this_point - points[ind],
@@ -389,7 +391,7 @@ def naive_fusion_isotropic_grid(
             big_new_shape_dists.append(this_dist)
             big_new_shape_points.append(big_point + (this_point - points[ind]) * grid)
 
-        big_new_shape = (
+        big_new_shape: npt.NDArray[np.bool_] = (
             poly_list_to_label(
                 big_new_shape_dists,
                 big_new_shape_points,
