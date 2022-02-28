@@ -391,8 +391,8 @@ def test_naive_fusion_2d_anisotropic() -> None:
         [[z0, z0], [z1, z1], [z1 - 1, z1]]
     ) * np.array(grid)
 
-    shape = tuple(s * g for s, g in zip(shape, grid))
-    label = polygons_to_label(new_dists, new_points, shape)
+    grid_shape = tuple(s * g for s, g in zip(shape, grid))
+    label = polygons_to_label(new_dists, new_points, grid_shape)
     # set labels to correct ids
     label[label == 1] = 1
     label[label == 2] = 2
@@ -511,7 +511,7 @@ def test_value_error_with_3d_rays_in_naive_fusion() -> None:
         nf.naive_fusion(dists, probs)
 
 
-def test_get_poly_list_to_label():
+def test_get_poly_list_to_label() -> None:
     """Exception ValueErrors should be raised. Needs separate testing."""
     with pytest.raises(ValueError):
         # rays must be supplied
