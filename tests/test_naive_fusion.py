@@ -277,6 +277,7 @@ def test_naive_fusion_3d() -> None:
 
     g = 2
     lbl = nf.naive_fusion(dists, probs, rays, grid=(g, g, g))
+    lbl_aniso = nf.naive_fusion_anisotropic_grid(dists, probs, rays, grid=(g, g, g))
 
     new_dists = np.full((3, n_rays), dist)
     new_points: npt.NDArray[np.double] = (
@@ -292,6 +293,7 @@ def test_naive_fusion_3d() -> None:
     label[label == 3] = 2
 
     np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
+    np.testing.assert_array_equal(lbl_aniso, label)  # type: ignore [no-untyped-call]
 
 
 def test_naive_fusion_2d() -> None:
@@ -329,6 +331,7 @@ def test_naive_fusion_2d() -> None:
 
     g = 2
     lbl = nf.naive_fusion(dists, probs, grid=(g, g))
+    lbl_aniso = nf.naive_fusion_anisotropic_grid(dists, probs, grid=(g, g))
 
     new_dists = np.full((3, n_rays), dist)
     new_points: npt.NDArray[np.double] = (
@@ -336,6 +339,60 @@ def test_naive_fusion_2d() -> None:
     )
 
     label = polygons_to_label(new_dists, new_points, tuple(s * g for s in shape))
+    # set labels to correct ids
+    label[label == 1] = 1
+    label[label == 2] = 2
+    label[label == 3] = 2
+    print(lbl)
+    print(label)
+
+    np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
+    np.testing.assert_array_equal(lbl_aniso, label)  # type: ignore [no-untyped-call]
+
+
+def test_naive_fusion_2d_anisotropic() -> None:
+    """Test naive fusion with overlaping points in 2d with anisotropic grid."""
+    n_rays = 20
+
+    s = 8
+    shape = (s, s)
+    dists = np.zeros(shape + (n_rays,))
+    probs = np.zeros(shape)
+
+    # object 1 with several pixels that do not add to the shape
+    z0 = s // 4
+
+    # main point of this object
+    dist = 3
+    dists[z0, z0, :] = dist
+    probs[z0, z0] = 0.9
+
+    small_dist = 0.1
+    dists[z0 - 1, z0, :] = small_dist
+    probs[z0 - 1, z0] = 0.8
+    dists[z0, z0 - 1, :] = small_dist
+    probs[z0, z0 - 1] = 0.8
+    dists[z0 - 1, z0 - 1, :] = small_dist
+    probs[z0 - 1, z0 - 1] = 0.8
+
+    # object 2 composed of two pixels
+    z1 = s // 4 * 3
+    dists[z1, z1, :] = dist
+    probs[z1, z1] = 0.6
+
+    dists[z1 - 1, z1, :] = dist
+    probs[z1 - 1, z1] = 0.7
+
+    grid = (1, 2)
+    lbl = nf.naive_fusion(dists, probs, grid=grid)
+
+    new_dists = np.full((3, n_rays), dist)
+    new_points: npt.NDArray[np.double] = np.array(
+        [[z0, z0], [z1, z1], [z1 - 1, z1]]
+    ) * np.array(grid)
+
+    grid_shape = tuple(s * g for s, g in zip(shape, grid))
+    label = polygons_to_label(new_dists, new_points, grid_shape)
     # set labels to correct ids
     label[label == 1] = 1
     label[label == 2] = 2
@@ -393,6 +450,10 @@ def test_naive_fusion_2d_winding() -> None:
     lbl = nf.naive_fusion(dists, probs, grid=(g, g))
     lbl_no_slicing = nf.naive_fusion(dists, probs, grid=(g, g), no_slicing=True)
 
+    lbl_no_slicing_anisotropic = nf.naive_fusion_anisotropic_grid(
+        dists, probs, grid=(g, g), no_slicing=True
+    )
+
     label = polygons_to_label(new_dists, new_points, tuple(s * g for s in shape))
     # set labels to correct ids
     label[label > 0] = 1
@@ -409,6 +470,10 @@ def test_naive_fusion_2d_winding() -> None:
     np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
         lbl_no_slicing, label
     )
+    # lbl with slicing and anisotropic version should also work
+    np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
+        lbl_no_slicing_anisotropic, label
+    )
 
 
 def test_value_error_because_of_shape_in_naive_fusion() -> None:
@@ -421,6 +486,10 @@ def test_value_error_because_of_shape_in_naive_fusion() -> None:
     dists = np.zeros(shape + (n_rays,))
     probs = np.zeros(shape)
 
+    with pytest.raises(ValueError):
+        nf.naive_fusion_anisotropic_grid(dists, probs, rays)
+    with pytest.raises(ValueError):
+        nf.naive_fusion_isotropic_grid(dists, probs, rays)
     with pytest.raises(ValueError):
         nf.naive_fusion(dists, probs, rays)
 
@@ -435,4 +504,18 @@ def test_value_error_with_3d_rays_in_naive_fusion() -> None:
     probs = np.zeros(shape)
 
     with pytest.raises(ValueError):
+        nf.naive_fusion_anisotropic_grid(dists, probs)
+    with pytest.raises(ValueError):
+        nf.naive_fusion_isotropic_grid(dists, probs)
+    with pytest.raises(ValueError):
         nf.naive_fusion(dists, probs)
+
+
+def test_get_poly_list_to_label() -> None:
+    """Exception ValueErrors should be raised. Needs separate testing."""
+    with pytest.raises(ValueError):
+        # rays must be supplied
+        nf.get_poly_list_to_label((3, 3, 3), None)
+    with pytest.raises(ValueError):
+        # shape must be of length 2 or 3
+        nf.get_poly_list_to_label((2, 3, 4, 5), None)
