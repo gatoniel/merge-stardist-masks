@@ -1155,18 +1155,20 @@ test = ["pytest"]
 
 [[package]]
 name = "stardist"
-version = "0.7.3"
-description = "StarDist"
+version = "0.8.0"
+description = "StarDist - Object Detection with Star-convex Shapes"
 category = "main"
 optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
 csbdeep = ">=0.6.3"
+imageio = "*"
 numba = "*"
 scikit-image = "*"
 
 [package.extras]
+bioimageio = ["bioimageio.core (>=0.5.0)", "importlib-metadata"]
 test = ["pytest"]
 tf1 = ["csbdeep[tf1] (>=0.6.3)"]
 
@@ -1339,7 +1341,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.10"
-content-hash = "62b364182b001509eae648b5531e00315790cefb6a490906f00ace392c87a327"
+content-hash = "56174aef2f457c4840972d0f73edc3566ebe6e09302023a19e6f4c056a070e6a"
 
 [metadata.files]
 alabaster = [
@@ -2202,19 +2204,19 @@ sphinxcontrib-serializinghtml = [
     {file = "sphinxcontrib_serializinghtml-1.1.5-py2.py3-none-any.whl", hash = "sha256:352a9a00ae864471d3a7ead8d7d79f5fc0b57e8b3f95e9867eb9eb28999b92fd"},
 ]
 stardist = [
-    {file = "stardist-0.7.3-cp36-cp36m-macosx_10_15_x86_64.whl", hash = "sha256:269ff21140ed3230cfc69990b2dd720789204a7503af36e5e60010ae4d703746"},
-    {file = "stardist-0.7.3-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8be35b85b4726cc7f320529768145e262b936fa0dc550af19fdc1ee6295f5c7f"},
-    {file = "stardist-0.7.3-cp36-cp36m-win_amd64.whl", hash = "sha256:d082841d88a91f55d78238faabc4526e99fa45863b3161426d3fedb4804fcf13"},
-    {file = "stardist-0.7.3-cp37-cp37m-macosx_10_15_x86_64.whl", hash = "sha256:34a5f6aa87615e2cc21d9b11351d567c608c3a9288d56fd3dcb2b3dbedaac9e1"},
-    {file = "stardist-0.7.3-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:18424d58bd99872f1329c5e05614b57548cff305c6abbb52f922c7c91f9c601e"},
-    {file = "stardist-0.7.3-cp37-cp37m-win_amd64.whl", hash = "sha256:2a49e95ad333ce884087c032c39adab931fcb3802c44d1f8464cc3b15f9fc3a5"},
-    {file = "stardist-0.7.3-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:248924735750d4df3f815fcc2b6dc49c1f6ee0e366ae5c39ed1432306ae9bd69"},
-    {file = "stardist-0.7.3-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4df00269c772492d01e250c78a935b02e733eefdb0b7d378ce4a7aab437f2b49"},
-    {file = "stardist-0.7.3-cp38-cp38-win_amd64.whl", hash = "sha256:3a43b177ee8a68b37207f40f06cbbb70e36efd7d389b66706b4dc9eecb1f0902"},
-    {file = "stardist-0.7.3-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:44c8fa272503dcdacf1779f0b51aeb9b466a0a08a39ad427ca8040bef1a450d3"},
-    {file = "stardist-0.7.3-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e3c99b76097b9a54e63e40dd6a7ee5fdfe9acb80b08effe5f220ba38977fc3ff"},
-    {file = "stardist-0.7.3-cp39-cp39-win_amd64.whl", hash = "sha256:026e69133158ccc34d8326365554385d25e59b04f04f1e61e61c7e838aefc5e9"},
-    {file = "stardist-0.7.3.tar.gz", hash = "sha256:a1ba10f00dde7f83e4d0f28ebee24e1fc1176d7d1638d5bc5b479b6cb7f90cd3"},
+    {file = "stardist-0.8.0-cp36-cp36m-macosx_10_15_x86_64.whl", hash = "sha256:c1eba072ba7dda8ebf2817847e61a3aa5fb852df8f06872b134ab672fccdb57a"},
+    {file = "stardist-0.8.0-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2ff669b99dd51b41a2d369c5a026b8da6cc7a9e17c54f1c27706adf306e176a5"},
+    {file = "stardist-0.8.0-cp36-cp36m-win_amd64.whl", hash = "sha256:30979e516bd280b60b7ad0a73841ec975e7b6cffdcbaf01b05049ca08060a85f"},
+    {file = "stardist-0.8.0-cp37-cp37m-macosx_10_15_x86_64.whl", hash = "sha256:e01ca684c97ac246960379abdd5cf273d2e83f45bf9323fa7768f1a3964acbf2"},
+    {file = "stardist-0.8.0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:67e235332edbfb2fcbce1bbad4f51ccf7d3237c3bbe3615b85b31201c15a5daa"},
+    {file = "stardist-0.8.0-cp37-cp37m-win_amd64.whl", hash = "sha256:7d8cf612863dc48298f1625e0da7186bb96fd0164a9de757f5478492d8a01a2d"},
+    {file = "stardist-0.8.0-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:bf44e55299a608143d6374df58030b680914916f64b5b6c012eb2788b5be4650"},
+    {file = "stardist-0.8.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:59d90b025fc4dccb47ac3fa9a9db5d069b9fd8a3c2f6810e7cd8e9634563fbdf"},
+    {file = "stardist-0.8.0-cp38-cp38-win_amd64.whl", hash = "sha256:4ef458aa17eb7505753dfda383b9fa62b79644da0dd19ce2f10d47de57d02705"},
+    {file = "stardist-0.8.0-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:ab926d2190edb3906f06ec4d0c8958074cde706d7147becc2578aa19e84b79df"},
+    {file = "stardist-0.8.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:68b8789f1dd7aa857fe4f104c2a85a33fbf5e2633d6c456d64ebc1a3182c0eb4"},
+    {file = "stardist-0.8.0-cp39-cp39-win_amd64.whl", hash = "sha256:54f7c44990f0e87dabd415e92b95a1f0c78fb1169455b5d8d4a3fff9d7ad166b"},
+    {file = "stardist-0.8.0.tar.gz", hash = "sha256:54dc09cd88f4409a74717976589013ded8ce3b41d1d34ffe2060be486cc35c94"},
 ]
 stevedore = [
     {file = "stevedore-3.5.0-py3-none-any.whl", hash = "sha256:a547de73308fd7e90075bb4d301405bebf705292fa90a90fc3bcf9133f58616c"},
