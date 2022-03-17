@@ -413,6 +413,14 @@ def naive_fusion_isotropic_grid(
             if size_of_current_shape == np.sum(new_shape):
                 full_overlaps += 1
                 if erase_probs_at_full_overlap:
+                    additional_shape: npt.NDArray[np.bool_] = (
+                        poly_to_label(
+                            this_dist / grid / 2,
+                            point + this_point - points[ind],
+                            shape_paint,
+                        )
+                        > 0
+                    )
                     current_probs[additional_shape] = -1
             else:
                 big_new_shape_dists.append(this_dist)
@@ -606,6 +614,14 @@ def naive_fusion_anisotropic_grid(
             if size_of_current_shape == np.sum(new_shape):
                 full_overlaps += 1
                 if erase_probs_at_full_overlap:
+                    additional_shape: npt.NDArray[np.bool_] = (
+                        poly_to_label(
+                            dists[dists_ind] / 2,
+                            point + current_point - points[ind],
+                            shape_paint,
+                        )
+                        > 0
+                    )
                     current_probs[additional_shape] = -1
 
         current_probs[new_shape] = -1
