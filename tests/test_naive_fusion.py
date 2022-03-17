@@ -253,7 +253,7 @@ def erase_probs_at_full_overlap(request: FixtureRequestBool) -> bool:
     return request.param
 
 
-def test_naive_fusion_3d(erase_probs_at_full_overlap) -> None:
+def test_naive_fusion_3d(erase_probs_at_full_overlap: bool) -> None:
     """Test naive fusion with only two points that overlap."""
     n_rays = 40
     rays = Rays_GoldenSpiral(n=n_rays)
