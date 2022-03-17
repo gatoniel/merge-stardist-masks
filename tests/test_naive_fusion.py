@@ -348,6 +348,12 @@ def test_naive_fusion_2d(erase_probs_at_full_overlap: bool) -> None:
         grid=(g, g),
         erase_probs_at_full_overlap=erase_probs_at_full_overlap,
     )
+    lbl_iso = nf.naive_fusion_isotropic_grid(
+        dists,
+        probs,
+        grid=g,
+        erase_probs_at_full_overlap=erase_probs_at_full_overlap,
+    )
     lbl_aniso = nf.naive_fusion_anisotropic_grid(
         dists,
         probs,
@@ -369,6 +375,7 @@ def test_naive_fusion_2d(erase_probs_at_full_overlap: bool) -> None:
     print(label)
 
     np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
+    np.testing.assert_array_equal(lbl_iso, label)  # type: ignore [no-untyped-call]
     np.testing.assert_array_equal(lbl_aniso, label)  # type: ignore [no-untyped-call]
 
 
