@@ -247,7 +247,13 @@ def test_my_polygons_to_label() -> None:
     np.testing.assert_array_equal(my_label, label)  # type: ignore [no-untyped-call]
 
 
-def test_naive_fusion_3d() -> None:
+@pytest.fixture(params=[True, False])
+def erase_probs_at_full_overlap(request: FixtureRequestBool) -> bool:
+    """Switch between true and false."""
+    return request.param
+
+
+def test_naive_fusion_3d(erase_probs_at_full_overlap) -> None:
     """Test naive fusion with only two points that overlap."""
     n_rays = 40
     rays = Rays_GoldenSpiral(n=n_rays)
@@ -282,8 +288,27 @@ def test_naive_fusion_3d() -> None:
     probs[z1 - 1, z1, z1] = 0.7
 
     g = 2
-    lbl = nf.naive_fusion(dists, probs, rays, grid=(g, g, g))
-    lbl_aniso = nf.naive_fusion_anisotropic_grid(dists, probs, rays, grid=(g, g, g))
+    lbl = nf.naive_fusion(
+        dists,
+        probs,
+        rays,
+        grid=(g, g, g),
+        erase_probs_at_full_overlap=erase_probs_at_full_overlap,
+    )
+    lbl_iso = nf.naive_fusion_isotropic_grid(
+        dists,
+        probs,
+        rays,
+        grid=g,
+        erase_probs_at_full_overlap=erase_probs_at_full_overlap,
+    )
+    lbl_aniso = nf.naive_fusion_anisotropic_grid(
+        dists,
+        probs,
+        rays,
+        grid=(g, g, g),
+        erase_probs_at_full_overlap=erase_probs_at_full_overlap,
+    )
 
     new_dists = np.full((3, n_rays), dist)
     new_points: npt.NDArray[np.double] = (
@@ -299,13 +324,8 @@ def test_naive_fusion_3d() -> None:
     label[label == 3] = 2
 
     np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
+    np.testing.assert_array_equal(lbl_iso, label)  # type: ignore [no-untyped-call]
     np.testing.assert_array_equal(lbl_aniso, label)  # type: ignore [no-untyped-call]
-
-
-@pytest.fixture(params=[True, False])
-def erase_probs_at_full_overlap(request: FixtureRequestBool) -> bool:
-    """Switch between true and false."""
-    return request.param
 
 
 def test_naive_fusion_2d(erase_probs_at_full_overlap: bool) -> None:
