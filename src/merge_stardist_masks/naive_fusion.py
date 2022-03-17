@@ -179,6 +179,7 @@ def naive_fusion(
     grid: Tuple[int, ...] = (2, 2, 2),
     no_slicing: bool = False,
     max_full_overlaps: int = 2,
+    erase_probs_at_full_overlap: bool = False,
 ) -> npt.NDArray[np.uint16]:
     """Merge overlapping masks given by dists, probs, rays.
 
@@ -205,6 +206,8 @@ def naive_fusion(
             However, this might result in longer calculation times.
         max_full_overlaps: Maximum no. of full overlaps before current object is treated
             as finished.
+        erase_probs_at_full_overlap: If set to ``True`` probs are set to -1 whenever
+            a full overlap is detected.
 
     Returns:
         The label image with uint16 labels. For 2D, the shape is
@@ -224,11 +227,25 @@ def naive_fusion(
     """
     if len(np.unique(grid)) == 1:  # type: ignore [no-untyped-call]
         return naive_fusion_isotropic_grid(
-            dists, probs, rays, prob_thresh, grid[0], no_slicing, max_full_overlaps
+            dists,
+            probs,
+            rays,
+            prob_thresh,
+            grid[0],
+            no_slicing,
+            max_full_overlaps,
+            erase_probs_at_full_overlap,
         )
     else:
         return naive_fusion_anisotropic_grid(
-            dists, probs, rays, prob_thresh, grid, no_slicing, max_full_overlaps
+            dists,
+            probs,
+            rays,
+            prob_thresh,
+            grid,
+            no_slicing,
+            max_full_overlaps,
+            erase_probs_at_full_overlap,
         )
 
 
@@ -240,6 +257,7 @@ def naive_fusion_isotropic_grid(
     grid: int = 2,
     no_slicing: bool = False,
     max_full_overlaps: int = 2,
+    erase_probs_at_full_overlap: bool = False,
 ) -> npt.NDArray[np.uint16]:
     """Merge overlapping masks given by dists, probs, rays.
 
@@ -265,6 +283,8 @@ def naive_fusion_isotropic_grid(
             However, this might result in longer calculation times.
         max_full_overlaps: Maximum no. of full overlaps before current object is treated
             as finished.
+        erase_probs_at_full_overlap: If set to ``True`` probs are set to -1 whenever
+            a full overlap is detected.
 
     Returns:
         The label image with uint16 labels. For 2D, the shape is
@@ -392,6 +412,8 @@ def naive_fusion_isotropic_grid(
 
             if size_of_current_shape == np.sum(new_shape):
                 full_overlaps += 1
+                if erase_probs_at_full_overlap:
+                    current_probs[additional_shape] = -1
                 continue
 
             big_new_shape_dists.append(this_dist)
@@ -430,6 +452,7 @@ def naive_fusion_anisotropic_grid(
     grid: Tuple[int, ...] = (2, 2, 2),
     no_slicing: bool = False,
     max_full_overlaps: int = 2,
+    erase_probs_at_full_overlap: bool = False,
 ) -> npt.NDArray[np.uint16]:
     """Merge overlapping masks given by dists, probs, rays for anisotropic grid.
 
@@ -456,6 +479,8 @@ def naive_fusion_anisotropic_grid(
             However, this might result in longer calculation times.
         max_full_overlaps: Maximum no. of full overlaps before current object is treated
             as finished.
+        erase_probs_at_full_overlap: If set to ``True`` probs are set to -1 whenever
+            a full overlap is detected.
 
     Returns:
         The label image with uint16 labels. For 2D, the shape is
@@ -579,6 +604,8 @@ def naive_fusion_anisotropic_grid(
             )
             if size_of_current_shape == np.sum(new_shape):
                 full_overlaps += 1
+                if erase_probs_at_full_overlap:
+                    current_probs[additional_shape] = -1
 
         current_probs[new_shape] = -1
         new_probs[slices] = current_probs

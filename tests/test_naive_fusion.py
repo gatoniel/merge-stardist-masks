@@ -33,6 +33,12 @@ class FixtureRequestInt(FixtureRequest):
     param: int
 
 
+class FixtureRequestBool(FixtureRequest):
+    """Convenience Type for FixtureRequest with booleans."""
+
+    param: bool
+
+
 @pytest.fixture(params=[(2, 2), (10, 20), (3, 3, 3), (10, 20, 30)])
 def shape(request: FixtureRequestTuple) -> IntTuple:
     """Use different shapes for 2d and 3d cases."""
@@ -296,7 +302,13 @@ def test_naive_fusion_3d() -> None:
     np.testing.assert_array_equal(lbl_aniso, label)  # type: ignore [no-untyped-call]
 
 
-def test_naive_fusion_2d() -> None:
+@pytest.fixture(params=[True, False])
+def erase_probs_at_full_overlap(request: FixtureRequestBool) -> bool:
+    """Switch between true and false."""
+    return request.param
+
+
+def test_naive_fusion_2d(erase_probs_at_full_overlap) -> None:
     """Test naive fusion with overlaping points in 2d."""
     n_rays = 20
 
@@ -330,8 +342,18 @@ def test_naive_fusion_2d() -> None:
     probs[z1 - 1, z1] = 0.7
 
     g = 2
-    lbl = nf.naive_fusion(dists, probs, grid=(g, g))
-    lbl_aniso = nf.naive_fusion_anisotropic_grid(dists, probs, grid=(g, g))
+    lbl = nf.naive_fusion(
+        dists,
+        probs,
+        grid=(g, g),
+        erase_probs_at_full_overlap=erase_probs_at_full_overlap,
+    )
+    lbl_aniso = nf.naive_fusion_anisotropic_grid(
+        dists,
+        probs,
+        grid=(g, g),
+        erase_probs_at_full_overlap=erase_probs_at_full_overlap,
+    )
 
     new_dists = np.full((3, n_rays), dist)
     new_points: npt.NDArray[np.double] = (
