@@ -308,7 +308,7 @@ def erase_probs_at_full_overlap(request: FixtureRequestBool) -> bool:
     return request.param
 
 
-def test_naive_fusion_2d(erase_probs_at_full_overlap) -> None:
+def test_naive_fusion_2d(erase_probs_at_full_overlap: bool) -> None:
     """Test naive fusion with overlaping points in 2d."""
     n_rays = 20
 
