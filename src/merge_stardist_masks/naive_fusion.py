@@ -159,7 +159,7 @@ def inflate_array(
     # len(new_shape) will be len(grid)
     new_shape = tuple(s * g for s, g in zip(x.shape, grid))
     if x.ndim > len(new_shape):
-        new_shape = new_shape + tuple(x.shape[len(new_shape) :])
+        new_shape = new_shape + x.shape[len(new_shape) :]
     new_x = np.full(new_shape, default_value, dtype=x.dtype)
     slices = []
     for i in range(len(new_shape)):
