@@ -511,7 +511,7 @@ def naive_fusion_anisotropic_grid(
     # run max_dist before inflating dists
     max_dist = int(dists.max() * 2)
     # this could also be done with np.repeat, but for probs it is important that some
-    # of the repeatet values are -1, as they should not be considered.
+    # of the repeated values are -1, as they should not be considered.
     new_probs = inflate_array(probs, grid, default_value=-1)
     points = inflate_array(points_from_grid(probs.shape, grid), grid, default_value=0)
 
