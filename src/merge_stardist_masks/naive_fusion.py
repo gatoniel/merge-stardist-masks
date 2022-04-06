@@ -22,9 +22,7 @@ ArrayLike = npt.ArrayLike
 
 def mesh_from_shape(shape: Tuple[int, ...]) -> npt.NDArray[np.int_]:
     """Convenience function to generate a mesh."""
-    offsets = []
-    for i in range(len(shape)):
-        offsets.append(np.arange(shape[i]))
+    offsets = [np.arange(s) for s in shape]
     mesh = np.meshgrid(*offsets, indexing="ij")  # type: ignore [no-untyped-call]
     return np.stack(mesh, axis=-1)
 
