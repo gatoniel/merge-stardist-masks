@@ -673,22 +673,27 @@ def naive_fusion_3d_sparse(
         # Check for other points in the slice
         subvolume_offset = np.array([[0 if s.start is None else s.start for s in subvolume_crop]])
 
+        points_with_offset = points - subvolume_offset
+        is_in_subvolume = np.logical_and(
+            np.all(points_with_offset >= 0, axis=1),
+            np.all(points_with_offset < subvolume_shape, axis=1)
+        )
+
+        idx_is_in_subvolume = np.where(is_in_subvolume)[0]
+
+        dists_in_subvolume = dists[is_in_subvolume, :]
+        points_in_subvolume = points_with_offset[is_in_subvolume, :]
+
         full_overlaps = 0
+
         while True:
             if full_overlaps > max_full_overlaps:
                 break
 
-            points_with_offset = points - subvolume_offset
-            is_in_subvolume = np.logical_and(
-                np.all(points_with_offset >= 0, axis=1),
-                np.all(points_with_offset < subvolume_shape, axis=1)
-            )
-
-            idx_is_in_subvolume = np.where(is_in_subvolume)[0]
-
             probs_in_subvolume = probs[is_in_subvolume]
-            dists_in_subvolume = dists[is_in_subvolume, :]
-            points_in_subvolume = points_with_offset[is_in_subvolume, :]
+
+            if not np.any(probs_in_subvolume > 0):
+                break
 
             prob_idx_subvolume = np.argmax(probs_in_subvolume)
             
