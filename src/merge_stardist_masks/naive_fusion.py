@@ -721,9 +721,8 @@ def naive_fusion_3d_sparse(
                     probs[idx_is_in_subvolume[is_covered]] = -1
 
         ## Write slice in lbl
-        paint_in = lbl[slices]
-        paint_in[new_shape] = current_id
-        lbl[slices] = paint_in
+        subvolume_before[subvolume_mask] = current_id
+        lbl[subvolume_crop] = subvolume_before
 
         current_id += 1
 
