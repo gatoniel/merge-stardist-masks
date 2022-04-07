@@ -676,7 +676,7 @@ def naive_fusion_3d_sparse(
         points_with_offset = points - subvolume_offset
         is_in_subvolume = np.logical_and(
             np.all(points_with_offset >= 0, axis=1),
-            np.all(points_with_offset < subvolume_shape, axis=1)
+            np.all(points_with_offset < np.array(subvolume_shape), axis=1)
         )
 
         idx_is_in_subvolume = np.where(is_in_subvolume)[0]
