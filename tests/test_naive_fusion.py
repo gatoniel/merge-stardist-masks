@@ -568,3 +568,31 @@ def test_get_poly_list_to_label() -> None:
     with pytest.raises(ValueError):
         # shape must be of length 2 or 3
         nf.get_poly_list_to_label((2, 3, 4, 5), None)
+
+
+def test_naive_fusion_sparse_2d() -> None:
+    n_polys = 2
+    n_rays = 3
+
+    grid = (1,1)
+
+    dists = np.zeros((n_polys, n_rays))
+    probs = np.zeros(n_polys)
+    points = np.zeros((n_polys, 2), dtype=int)
+
+    probs = np.array([0.8, 0.9])
+    dists = np.array([
+        [3, 3, 3, 3],
+        [2, 2, 2, 2],
+    ])
+
+    points = np.array([
+        [3, 3],
+        [7, 7],
+    ])
+
+    lbl_shape = (10, 10)
+
+    lbl = nf.naive_fusion_sparse(dists, probs, points, lbl_shape, grid)  
+    
+    print(lbl)  
