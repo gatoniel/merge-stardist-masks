@@ -618,30 +618,31 @@ def naive_fusion_anisotropic_grid(
     return lbl
 
 
-def naive_fusion_3d_sparse(
+def naive_fusion_sparse(
     dists: npt.NDArray[np.double],
     probs: npt.NDArray[np.double],
     points: npt.NDArray[int],
-    lbl_shape: Tuple[int],
+    lbl_shape: Tuple[int, ...],
     grid: Tuple[int, ...],
-    no_slicing: bool = False,
-    max_full_overlaps: int = 2,
-    erase_probs_at_full_overlap: bool = False,
+    rays: Optional[Rays_Base] = None,
+    no_slicing: Optional[bool] = False,
+    max_full_overlaps: Optional[int] = 2,
+    erase_probs_at_full_overlap: Optional[bool] = False,
 ) -> npt.NDArray[int]:
     """Merge sparse overlapping masks given by dists, probs, points.
 
 
     Example:
-        >>> from merge_stardist_masks.naive_fusion import naive_fusion_3d_sparse
+        >>> from merge_stardist_masks.naive_fusion import naive_fusion_sparse
         >>> probs, dists, points = model.predict_sparse(img)
-        >>> lbl = naive_fusion_3d_sparse(dists, probs, points, img.shape)
+        >>> lbl = naive_fusion_sparse(dists, probs, points, img.shape)
     """
     from tqdm import tqdm
     from math import ceil
 
 
     assert dists.shape[0] == probs.shape[0] == points.shape[0] \
-        , f'The shapes {dists.shape}, {probs.shape}, {points.shape}' +
+        , f'The shapes {dists.shape}, {probs.shape}, {points.shape}' + \
            ' (dists, probs, points) does not match for sparse fusion!'
 
     shape = tuple(ceil(s / g) for s, g in zip(lbl_shape, grid))
@@ -690,32 +691,35 @@ def naive_fusion_3d_sparse(
         points_with_offset = points - subvolume_offset
         is_in_subvolume = np.logical_and(
             np.all(points_with_offset >= 0, axis=1),
-            np.all(points_with_offset < np.array(subvolume_shape), axis=1)
+            np.all(points_with_offset < np.array(subvolume_shape), axis=1),
         )
 
         idx_is_in_subvolume = np.where(is_in_subvolume)[0]
-
-        dists_in_subvolume = dists[is_in_subvolume, :]
-        points_in_subvolume = points_with_offset[is_in_subvolume, :]
 
         full_overlaps = 0
         while True:
             if full_overlaps > max_full_overlaps:
                 break
 
-            probs_in_subvolume = probs[is_in_subvolume]
+            idcs_in_subvolume_mask = idx_is_in_subvolume[ \
+                    subvolume_mask[tuple(points_with_offset[is_in_subvolume])] \
+            ]
 
-            if not np.any(probs_in_subvolume > 0):
+            probs_in_subvolume_mask = probs[idcs_in_subvolume_mask]
+
+            if not np.any(probs_in_subvolume_mask > 0):
                 break
 
-            prob_idx_subvolume = np.argmax(probs_in_subvolume)
-            
-            probs[idx_is_in_subvolume[prob_idx_subvolume]] = -1
+            dists_in_subvolume_mask = dists[idcs_in_subvolume_mask, :]
+            points_in_subvolume_mask = points_with_offset[idcs_in_subvolume_mask, :]
+
+            prob_idx_subvolume_mask = np.argmax(probs_in_subvolume_mask)
+            probs[idcs_in_subvolume_mask[prob_idx_subvolume_mask]] = -1
 
             additional_shape: npt.NDArray[bool] = (
                 poly_to_label(
-                    dists_in_subvolume[prob_idx_subvolume, :],
-                    points_in_subvolume[prob_idx_subvolume, :],
+                    dists_in_subvolume_mask[prob_idx_subvolume_mask, :],
+                    points_in_subvolume_mask[prob_idx_subvolume_mask, :],
                     subvolume_shape
                 ) == 1
             )
@@ -734,9 +738,7 @@ def naive_fusion_3d_sparse(
             if size_of_current_shape == np.sum(subvolume_mask):
                 full_overlaps += 1
                 if erase_probs_at_full_overlap:
-                    #TODO (erjel): Check this!
-                    is_covered = subvolume_masks[tuple(points_in_subvolume)]
-                    probs[idx_is_in_subvolume[is_covered]] = -1
+                    probs[idcs_in_subvolume_mask] = -1
 
         ## Write slice in lbl
         subvolume_before[subvolume_mask] = current_id
