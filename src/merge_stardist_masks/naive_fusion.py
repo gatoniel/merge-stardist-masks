@@ -624,6 +624,9 @@ def naive_fusion_3d_sparse(
     points: npt.NDArray[int],
     lbl_shape: Tuple[int],
     grid: Tuple[int, ...],
+    no_slicing: bool = False,
+    max_full_overlaps: int = 2,
+    erase_probs_at_full_overlap: bool = False,
 ) -> npt.NDArray[int]:
     """Merge sparse overlapping masks given by dists, probs, points.
 
@@ -634,15 +637,26 @@ def naive_fusion_3d_sparse(
         >>> lbl = naive_fusion_3d_sparse(dists, probs, points, img.shape)
     """
     from tqdm import tqdm
+    from math import ceil
 
-    lbl = np.zeros(lbl_shape, dtype=np.uint16)
 
     assert dists.shape[0] == probs.shape[0] == points.shape[0] \
         , f'The shapes {dists.shape}, {probs.shape}, {points.shape}' +
            ' (dists, probs, points) does not match for sparse fusion!'
 
+    shape = tuple(ceil(s / g) for s, g in zip(lbl_shape, grid))
+    poly_to_label = get_poly_to_label(shape, rays)
+
+    lbl = np.zeros(lbl_shape, dtype=np.uint16)
+
     prob_order = np.argsort(probs)[::-1]
     subvolume_max_edge_length = int(dists.max() * 2)
+
+
+    if no_slicing:
+        this_slice_point = no_slicing_slice_point
+    else:
+        this_slice_point = slice_point
 
     current_id = 1
     for prob_idx in tqdm(prob_order):
