@@ -616,3 +616,115 @@ def naive_fusion_anisotropic_grid(
         current_id += 1
 
     return lbl
+
+
+def naive_fusion_3d_sparse(
+    dists: npt.NDArray[np.double],
+    probs: npt.NDArray[np.double],
+    points: npt.NDArray[int],
+    lbl_shape: Tuple[int],
+    grid: Tuple[int, ...],
+) -> npt.NDArray[int]:
+    """Merge sparse overlapping masks given by dists, probs, points.
+
+
+    Example:
+        >>> from merge_stardist_masks.naive_fusion import naive_fusion_3d_sparse
+        >>> probs, dists, points = model.predict_sparse(img)
+        >>> lbl = naive_fusion_3d_sparse(dists, probs, points, img.shape)
+    """
+    from tqdm import tqdm
+
+    lbl = np.zeros(lbl_shape, dtype=np.uint16)
+
+    assert dists.shape[0] == probs.shape[0] == points.shape[0] \
+        , f'The shapes {dists.shape}, {probs.shape}, {points.shape}' +
+           ' (dists, probs, points) does not match for sparse fusion!'
+
+    prob_order = np.argsort(probs)[::-1]
+    subvolume_max_edge_length = int(dists.max() * 2)
+
+    current_id = 1
+    for prob_idx in tqdm(prob_order):
+        if probs[prob_idx] == -1:
+            continue
+        else:
+            probs[prob_idx] = -1
+
+        current_dists = dists[prob_idx, :]
+
+        # Get subvolume for calculations       
+        subvolume_crop, subvolume_center = this_slice_point(
+            points[prob_idx, :],
+            subvolume_max_edge_length
+        )
+
+        subvolume_before = lbl[subvolume_crop]
+        subvolume_shape = subvolume_before.shape
+
+        subvolume_mask = poly_to_label(current_dists, subvolume_center, subvolume_shape) == 1
+
+        # TODO(erjel): Prevent overwrite?
+        #subvolume_mask = np.logical_and(
+        #    subvolume_before == 0,
+        #    subvolume_mask
+        #)
+        
+        # Check for other points in the slice
+        subvolume_offset = np.array([[0 if s.start is None else s.start for s in subvolume_crop]])
+
+        full_overlaps = 0
+        while True:
+            if full_overlaps > max_full_overlaps:
+                break
+
+            points_with_offset = points - subvolume_offset
+            is_in_subvolume = np.logical_and(
+                np.all(points_with_offset >= 0, axis=1),
+                np.all(points_with_offset < subvolume_shape, axis=1)
+            )
+
+            idx_is_in_subvolume = np.where(is_in_subvolume)[0]
+
+            probs_in_subvolume = probs[is_in_subvolume]
+            dists_in_subvolume = dists[is_in_subvolume, :]
+            points_in_subvolume = points_with_offset[is_in_subvolume, :]
+
+            prob_idx_subvolume = np.argmax(probs_in_subvolume)
+            
+            probs[idx_is_in_subvolume[prob_idx_subvolume]] = -1
+
+            additional_shape: npt.NDArray[bool] = (
+                poly_to_label(
+                    dists_in_subvolume[prob_idx_subvolume],
+                    points_in_subvolume[prob_idx_subvolume],
+                    subvolume_shape
+                ) == 1
+            )
+            # TODO(erjel): Prevent overwrite?
+            # additional_shape = np.logical_and(
+            #   subvolume_before == 0,
+            #   additional_shape   
+            # )
+
+            size_of_current_shape = np.sum(subvolume_mask)
+
+            subvolume_mask = np.logical_or(
+                subvolume_mask,
+                additional_shape
+            )
+            if size_of_current_shape == np.sum(subvolume_mask):
+                full_overlaps += 1
+                if erase_probs_at_full_overlap:
+                    #TODO (erjel): Check this!
+                    is_covered = subvolume_masks[tuple(points_in_subvolume)]
+                    probs[idx_is_in_subvolume[is_covered]] = -1
+
+        ## Write slice in lbl
+        paint_in = lbl[slices]
+        paint_in[new_shape] = current_id
+        lbl[slices] = paint_in
+
+        current_id += 1
+
+    return lbl
