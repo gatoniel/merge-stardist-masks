@@ -22,9 +22,7 @@ ArrayLike = npt.ArrayLike
 
 def mesh_from_shape(shape: Tuple[int, ...]) -> npt.NDArray[np.int_]:
     """Convenience function to generate a mesh."""
-    offsets = []
-    for i in range(len(shape)):
-        offsets.append(np.arange(shape[i]))
+    offsets = [np.arange(s) for s in shape]
     mesh = np.meshgrid(*offsets, indexing="ij")  # type: ignore [no-untyped-call]
     return np.stack(mesh, axis=-1)
 
@@ -159,7 +157,7 @@ def inflate_array(
     # len(new_shape) will be len(grid)
     new_shape = tuple(s * g for s, g in zip(x.shape, grid))
     if x.ndim > len(new_shape):
-        new_shape = new_shape + tuple(x.shape[len(new_shape) :])
+        new_shape = new_shape + x.shape[len(new_shape) :]
     new_x = np.full(new_shape, default_value, dtype=x.dtype)
     slices = []
     for i in range(len(new_shape)):
@@ -511,7 +509,7 @@ def naive_fusion_anisotropic_grid(
     # run max_dist before inflating dists
     max_dist = int(dists.max() * 2)
     # this could also be done with np.repeat, but for probs it is important that some
-    # of the repeatet values are -1, as they should not be considered.
+    # of the repeated values are -1, as they should not be considered.
     new_probs = inflate_array(probs, grid, default_value=-1)
     points = inflate_array(points_from_grid(probs.shape, grid), grid, default_value=0)
 
