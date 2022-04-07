@@ -32,7 +32,7 @@ def points_from_grid(
 ) -> npt.NDArray[np.int_]:
     """Generate array giving out points for indices."""
     mesh = mesh_from_shape(shape)
-    grid_array = np.array(_normalize_grid(grid, len(shape)))[np.newaxis]
+    grid_array = np.array(_normalize_grid(grid, len(shape))).reshape(1, len(shape))
     return mesh * grid_array
 
 
@@ -571,7 +571,7 @@ def naive_fusion_anisotropic_grid(
                 break
             probs_within = current_probs[new_shape]
 
-            if not np.any(probs_within > prob_thresh):
+            if np.sum(probs_within > prob_thresh) == 0:
                 break
 
             max_ind_within = np.argmax(probs_within)
@@ -595,11 +595,13 @@ def naive_fusion_anisotropic_grid(
                 > 0
             )
 
+            size_of_current_shape = np.sum(new_shape)
+
             new_shape = np.logical_or(
                 new_shape,
                 additional_shape,
             )
-            if np.all(new_shape):
+            if size_of_current_shape == np.sum(new_shape):
                 full_overlaps += 1
                 if erase_probs_at_full_overlap:
                     current_probs[additional_shape] = -1
