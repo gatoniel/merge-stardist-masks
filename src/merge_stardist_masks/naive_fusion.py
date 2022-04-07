@@ -685,7 +685,6 @@ def naive_fusion_3d_sparse(
         points_in_subvolume = points_with_offset[is_in_subvolume, :]
 
         full_overlaps = 0
-
         while True:
             if full_overlaps > max_full_overlaps:
                 break
@@ -701,8 +700,8 @@ def naive_fusion_3d_sparse(
 
             additional_shape: npt.NDArray[bool] = (
                 poly_to_label(
-                    dists_in_subvolume[prob_idx_subvolume],
-                    points_in_subvolume[prob_idx_subvolume],
+                    dists_in_subvolume[prob_idx_subvolume, :],
+                    points_in_subvolume[prob_idx_subvolume, :],
                     subvolume_shape
                 ) == 1
             )
