@@ -616,3 +616,134 @@ def naive_fusion_anisotropic_grid(
         current_id += 1
 
     return lbl
+
+
+def naive_fusion_sparse(
+    dists: npt.NDArray[np.double],
+    probs: npt.NDArray[np.double],
+    points: npt.NDArray[int],
+    lbl_shape: Tuple[int, ...],
+    grid: Tuple[int, ...],
+    rays: Optional[Rays_Base] = None,
+    no_slicing: Optional[bool] = False,
+    max_full_overlaps: Optional[int] = 2,
+    erase_probs_at_full_overlap: Optional[bool] = False,
+) -> npt.NDArray[int]:
+    """Merge sparse overlapping masks given by dists, probs, points.
+
+
+    Example:
+        >>> from merge_stardist_masks.naive_fusion import naive_fusion_sparse
+        >>> probs, dists, points = model.predict_sparse(img)
+        >>> lbl = naive_fusion_sparse(dists, probs, points, img.shape)
+    """
+    from tqdm import tqdm
+    from math import ceil
+
+
+    assert dists.shape[0] == probs.shape[0] == points.shape[0] \
+        , f'The shapes {dists.shape}, {probs.shape}, {points.shape}' + \
+           ' (dists, probs, points) does not match for sparse fusion!'
+
+    shape = tuple(ceil(s / g) for s, g in zip(lbl_shape, grid))
+    poly_to_label = get_poly_to_label(shape, rays)
+
+    lbl = np.zeros(lbl_shape, dtype=np.uint16)
+
+    prob_order = np.argsort(probs)[::-1]
+    subvolume_max_edge_length = int(dists.max() * 2)
+
+
+    if no_slicing:
+        this_slice_point = no_slicing_slice_point
+    else:
+        this_slice_point = slice_point
+
+    current_id = 1
+    for prob_idx in tqdm(prob_order):
+        if probs[prob_idx] == -1:
+            continue
+        else:
+            probs[prob_idx] = -1
+
+        current_dists = dists[prob_idx, :]
+
+        # Get subvolume for calculations       
+        subvolume_crop, subvolume_center = this_slice_point(
+            points[prob_idx, :],
+            subvolume_max_edge_length
+        )
+
+        subvolume_before = lbl[subvolume_crop]
+        subvolume_shape = subvolume_before.shape
+
+        subvolume_mask = poly_to_label(current_dists, subvolume_center, subvolume_shape) == 1
+
+        # TODO(erjel): Prevent overwrite?
+        #subvolume_mask = np.logical_and(
+        #    subvolume_before == 0,
+        #    subvolume_mask
+        #)
+        
+        # Check for other points in the slice
+        subvolume_offset = np.array([[0 if s.start is None else s.start for s in subvolume_crop]])
+
+        points_with_offset = points - subvolume_offset
+        is_in_subvolume = np.logical_and(
+            np.all(points_with_offset >= 0, axis=1),
+            np.all(points_with_offset < np.array(subvolume_shape), axis=1),
+        )
+
+        idx_is_in_subvolume = np.where(is_in_subvolume)[0]
+
+        full_overlaps = 0
+        while True:
+            if full_overlaps > max_full_overlaps:
+                break
+
+            idcs_in_subvolume_mask = idx_is_in_subvolume[ \
+                    subvolume_mask[tuple(points_with_offset[is_in_subvolume])] \
+            ]
+
+            probs_in_subvolume_mask = probs[idcs_in_subvolume_mask]
+
+            if not np.any(probs_in_subvolume_mask > 0):
+                break
+
+            dists_in_subvolume_mask = dists[idcs_in_subvolume_mask, :]
+            points_in_subvolume_mask = points_with_offset[idcs_in_subvolume_mask, :]
+
+            prob_idx_subvolume_mask = np.argmax(probs_in_subvolume_mask)
+            probs[idcs_in_subvolume_mask[prob_idx_subvolume_mask]] = -1
+
+            additional_shape: npt.NDArray[bool] = (
+                poly_to_label(
+                    dists_in_subvolume_mask[prob_idx_subvolume_mask, :],
+                    points_in_subvolume_mask[prob_idx_subvolume_mask, :],
+                    subvolume_shape
+                ) == 1
+            )
+            # TODO(erjel): Prevent overwrite?
+            # additional_shape = np.logical_and(
+            #   subvolume_before == 0,
+            #   additional_shape   
+            # )
+
+            size_of_current_shape = np.sum(subvolume_mask)
+
+            subvolume_mask = np.logical_or(
+                subvolume_mask,
+                additional_shape
+            )
+            if size_of_current_shape == np.sum(subvolume_mask):
+                full_overlaps += 1
+                if erase_probs_at_full_overlap:
+                    probs[idcs_in_subvolume_mask] = -1
+
+        ## Write slice in lbl
+        subvolume_before[subvolume_mask] = current_id
+        lbl[subvolume_crop] = subvolume_before
+
+        current_id += 1
+
+    return lbl
