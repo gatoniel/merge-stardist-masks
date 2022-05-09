@@ -170,7 +170,7 @@ def inflate_array(
 
 
 def paint_in_without_overlaps(
-    paint_in: npt.NDArray[T], shape: npt.NDArray[np.bool_], paint_id: T
+    paint_in: npt.NDArray[T], shape: npt.NDArray[np.bool_], paint_id: int
 ) -> npt.NDArray[T]:
     """Set entries of array to paint_id according to boolean values in shape."""
     paint_in[shape] = paint_id
@@ -178,7 +178,7 @@ def paint_in_without_overlaps(
 
 
 def paint_in_with_overlaps(
-    paint_in: npt.NDArray[T], shape: npt.NDArray[np.bool_], paint_id: T
+    paint_in: npt.NDArray[T], shape: npt.NDArray[np.bool_], paint_id: int
 ) -> npt.NDArray[T]:
     """Set entries of array paint_in to paint_id or -1 if not free anymore."""
     to_be_painted = paint_in[shape]
