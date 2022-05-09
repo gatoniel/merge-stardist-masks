@@ -169,6 +169,29 @@ def inflate_array(
     return new_x
 
 
+def paint_in_without_overlaps(
+    paint_in: npt.NDArray[T], shape: npt.NDArray[np.bool_], paint_id: T
+) -> npt.NDArray[T]:
+    """Set entries of array to paint_id according to boolean values in shape."""
+    paint_in[shape] = paint_id
+    return paint_in
+
+
+def paint_in_with_overlaps(
+    paint_in: npt.NDArray[T], shape: npt.NDArray[np.bool_], paint_id: T
+) -> npt.NDArray[T]:
+    """Set entries of array paint_in to paint_id or -1 if not free anymore."""
+    to_be_painted = paint_in[shape]
+    no_overlap_inds = to_be_painted == 0
+
+    to_be_painted[no_overlap_inds] = paint_id
+    to_be_painted[np.logical_not(no_overlap_inds)] = -1
+
+    paint_in[shape] = to_be_painted
+
+    return paint_in
+
+
 def naive_fusion(
     dists: npt.NDArray[np.double],
     probs: npt.NDArray[np.double],
@@ -178,7 +201,8 @@ def naive_fusion(
     no_slicing: bool = False,
     max_full_overlaps: int = 2,
     erase_probs_at_full_overlap: bool = False,
-) -> npt.NDArray[np.uint16]:
+    show_overlaps: bool = False,
+) -> Union[npt.NDArray[np.uint16], npt.NDArray[np.intc]]:
     """Merge overlapping masks given by dists, probs, rays.
 
     Performs a naive iterative scheme to merge the masks that a StarDist network has
@@ -206,6 +230,7 @@ def naive_fusion(
             as finished.
         erase_probs_at_full_overlap: If set to ``True`` probs are set to -1 whenever
             a full overlap is detected.
+        show_overlaps: If set to true, overlaps are set to ``-1``.
 
     Returns:
         The label image with uint16 labels. For 2D, the shape is
@@ -233,6 +258,7 @@ def naive_fusion(
             no_slicing,
             max_full_overlaps,
             erase_probs_at_full_overlap=erase_probs_at_full_overlap,
+            show_overlaps=show_overlaps,
         )
     else:
         return naive_fusion_anisotropic_grid(
@@ -244,6 +270,7 @@ def naive_fusion(
             no_slicing,
             max_full_overlaps,
             erase_probs_at_full_overlap=erase_probs_at_full_overlap,
+            show_overlaps=show_overlaps,
         )
 
 
@@ -256,7 +283,8 @@ def naive_fusion_isotropic_grid(
     no_slicing: bool = False,
     max_full_overlaps: int = 2,
     erase_probs_at_full_overlap: bool = False,
-) -> npt.NDArray[np.uint16]:
+    show_overlaps: bool = False,
+) -> Union[npt.NDArray[np.uint16], npt.NDArray[np.intc]]:
     """Merge overlapping masks given by dists, probs, rays.
 
     Performs a naive iterative scheme to merge the masks that a StarDist network has
@@ -283,6 +311,7 @@ def naive_fusion_isotropic_grid(
             as finished.
         erase_probs_at_full_overlap: If set to ``True`` probs are set to -1 whenever
             a full overlap is detected.
+        show_overlaps: If set to true, overlaps are set to ``-1``.
 
     Returns:
         The label image with uint16 labels. For 2D, the shape is
@@ -314,10 +343,7 @@ def naive_fusion_isotropic_grid(
 
     prob_sort = np.argsort(new_probs, axis=None)[::-1][:sum_thresh]
 
-    lbl = np.zeros(shape, dtype=np.uint16)
-
     big_shape = tuple(s * grid for s in shape)
-    big_lbl = np.zeros(big_shape, dtype=np.uint16)
 
     max_dist = int(dists.max() / grid * 2)
 
@@ -327,6 +353,15 @@ def naive_fusion_isotropic_grid(
         this_slice_point = no_slicing_slice_point
     else:
         this_slice_point = slice_point
+
+    if show_overlaps:
+        paint_in = paint_in_with_overlaps
+        lbl = np.zeros(shape, dtype=np.intc)
+        big_lbl = np.zeros(big_shape, dtype=np.intc)
+    else:
+        paint_in = paint_in_without_overlaps
+        lbl = np.zeros(shape, dtype=np.uint16)
+        big_lbl = np.zeros(big_shape, dtype=np.uint16)
 
     sorted_probs_j = 0
     current_id = 1
@@ -430,13 +465,9 @@ def naive_fusion_isotropic_grid(
         current_probs[new_shape] = -1
         new_probs[slices] = current_probs
 
-        paint_in = lbl[slices]
-        paint_in[new_shape] = current_id
-        lbl[slices] = paint_in
+        lbl[slices] = paint_in(lbl[slices], new_shape, current_id)
 
-        big_paint_in = big_lbl[big_slices]
-        big_paint_in[big_new_shape] = current_id
-        big_lbl[big_slices] = big_paint_in
+        big_lbl[big_slices] = paint_in(big_lbl[big_slices], big_new_shape, current_id)
 
         current_id += 1
 
@@ -452,7 +483,8 @@ def naive_fusion_anisotropic_grid(
     no_slicing: bool = False,
     max_full_overlaps: int = 2,
     erase_probs_at_full_overlap: bool = False,
-) -> npt.NDArray[np.uint16]:
+    show_overlaps: bool = False,
+) -> Union[npt.NDArray[np.uint16], npt.NDArray[np.intc]]:
     """Merge overlapping masks given by dists, probs, rays for anisotropic grid.
 
     Performs a naive iterative scheme to merge the masks that a StarDist network has
@@ -480,6 +512,7 @@ def naive_fusion_anisotropic_grid(
             as finished.
         erase_probs_at_full_overlap: If set to ``True`` probs are set to -1 whenever
             a full overlap is detected.
+        show_overlaps: If set to true, overlaps are set to ``-1``.
 
     Returns:
         The label image with uint16 labels. For 2D, the shape is
@@ -504,7 +537,6 @@ def naive_fusion_anisotropic_grid(
     poly_to_label = get_poly_to_label(shape, rays)
 
     big_shape = tuple(s * g for s, g in zip(shape, grid))
-    lbl = np.zeros(big_shape, dtype=np.uint16)
 
     # run max_dist before inflating dists
     max_dist = int(dists.max() * 2)
@@ -522,6 +554,13 @@ def naive_fusion_anisotropic_grid(
         this_slice_point = no_slicing_slice_point
     else:
         this_slice_point = slice_point
+
+    if show_overlaps:
+        paint_in = paint_in_with_overlaps
+        lbl = np.zeros(big_shape, dtype=np.intc)
+    else:
+        paint_in = paint_in_without_overlaps
+        lbl = np.zeros(big_shape, dtype=np.uint16)
 
     sorted_probs_j = 0
     current_id = 1
@@ -609,9 +648,7 @@ def naive_fusion_anisotropic_grid(
         current_probs[new_shape] = -1
         new_probs[slices] = current_probs
 
-        paint_in = lbl[slices]
-        paint_in[new_shape] = current_id
-        lbl[slices] = paint_in
+        lbl[slices] = paint_in(lbl[slices], new_shape, current_id)
 
         current_id += 1
 
