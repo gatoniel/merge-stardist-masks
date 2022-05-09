@@ -253,7 +253,15 @@ def erase_probs_at_full_overlap(request: FixtureRequestBool) -> bool:
     return request.param
 
 
-def test_naive_fusion_3d(erase_probs_at_full_overlap: bool) -> None:
+@pytest.fixture(params=[True, False])
+def show_overlaps(request: FixtureRequestBool) -> bool:
+    """Switch between true and false."""
+    return request.param
+
+
+def test_naive_fusion_3d(
+    erase_probs_at_full_overlap: bool, show_overlaps: bool
+) -> None:
     """Test naive fusion with only two points that overlap."""
     n_rays = 40
     rays = Rays_GoldenSpiral(n=n_rays)
@@ -294,6 +302,7 @@ def test_naive_fusion_3d(erase_probs_at_full_overlap: bool) -> None:
         rays,
         grid=(g, g, g),
         erase_probs_at_full_overlap=erase_probs_at_full_overlap,
+        show_overlaps=show_overlaps,
     )
     lbl_iso = nf.naive_fusion_isotropic_grid(
         dists,
@@ -301,6 +310,7 @@ def test_naive_fusion_3d(erase_probs_at_full_overlap: bool) -> None:
         rays,
         grid=g,
         erase_probs_at_full_overlap=erase_probs_at_full_overlap,
+        show_overlaps=show_overlaps,
     )
     lbl_aniso = nf.naive_fusion_anisotropic_grid(
         dists,
@@ -308,6 +318,7 @@ def test_naive_fusion_3d(erase_probs_at_full_overlap: bool) -> None:
         rays,
         grid=(g, g, g),
         erase_probs_at_full_overlap=erase_probs_at_full_overlap,
+        show_overlaps=show_overlaps,
     )
 
     new_dists = np.full((3, n_rays), dist)
@@ -397,6 +408,47 @@ def test_naive_fusion_2d(erase_probs_at_full_overlap: bool) -> None:
     np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
     np.testing.assert_array_equal(lbl_iso, label)  # type: ignore [no-untyped-call]
     np.testing.assert_array_equal(lbl_aniso, label)  # type: ignore [no-untyped-call]
+
+
+def test_naive_fusion_2d_with_overlaps() -> None:
+    """Test naive fusion with really overlaping points in 2d that need to be marked."""
+    n_rays = 20
+
+    s = 8
+    shape = (s, s)
+    dists = np.zeros(shape + (n_rays,))
+    probs = np.zeros(shape)
+
+    # object 1
+    z0 = s // 4
+    dist = 3
+    dists[z0, z0, :] = dist
+    probs[z0, z0] = 0.9
+
+    # object 2
+    z1 = s // 4 * 3 - 1
+    dists[z1, z1, :] = dist
+    probs[z1, z1] = 0.9
+
+    lbl = nf.naive_fusion(
+        dists,
+        probs,
+        grid=(1, 1),
+        show_overlaps=True,
+    )
+
+    new_dists = np.full((2, n_rays), dist)
+    new_points: npt.NDArray[np.double] = np.array([[z0, z0], [z1, z1]])
+
+    label = polygons_to_label(new_dists, new_points, shape)
+    # set overlapping labels to correct ids
+    label[3:5, 3:5] = -1
+    label[2, 5] = -1
+    label[5, 2] = -1
+    print(lbl)
+    print(label)
+
+    np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
 
 
 def test_naive_fusion_2d_anisotropic() -> None:
@@ -568,3 +620,58 @@ def test_get_poly_list_to_label() -> None:
     with pytest.raises(ValueError):
         # shape must be of length 2 or 3
         nf.get_poly_list_to_label((2, 3, 4, 5), None)
+
+
+def test_paint_in_without_overlaps() -> None:
+    """Set values of an array with the paint_in_without_overlaps function."""
+    shape = (3, 3)
+    lbl = np.zeros(shape, dtype=bool)
+    lbl[1:, 1:] = True
+
+    x = nf.paint_in_without_overlaps(np.zeros(shape), lbl, 1)
+    np.testing.assert_equal(  # type: ignore [no-untyped-call]
+        x[1:, 1:], np.ones((2, 2))
+    )
+    np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
+
+    x = nf.paint_in_without_overlaps(np.ones(shape), lbl, 3)
+    np.testing.assert_equal(  # type: ignore [no-untyped-call]
+        x[1:, 1:], 3 * np.ones((2, 2))
+    )
+    np.testing.assert_equal(x[:, 0], np.ones((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[0, :], np.ones((3,)))  # type: ignore [no-untyped-call]
+
+
+def test_paint_in_with_overlaps() -> None:
+    """Set values of an array with the paint_in_with_overlaps function."""
+    shape = (3, 3)
+    lbl = np.zeros(shape, dtype=bool)
+    lbl[1:, 1:] = True
+
+    x = nf.paint_in_with_overlaps(np.zeros(shape), lbl, 1)
+    np.testing.assert_equal(  # type: ignore [no-untyped-call]
+        x[1:, 1:], np.ones((2, 2))
+    )
+    np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
+
+    x = nf.paint_in_with_overlaps(np.ones(shape), lbl, 3)
+    np.testing.assert_equal(  # type: ignore [no-untyped-call]
+        x[1:, 1:], -np.ones((2, 2))
+    )
+    np.testing.assert_equal(x[:, 0], np.ones((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[0, :], np.ones((3,)))  # type: ignore [no-untyped-call]
+
+    y = np.zeros(shape)
+    y[1, 1] = 2
+    x = nf.paint_in_with_overlaps(y, lbl, 3)
+    assert x[1, 1] == -1
+    np.testing.assert_equal(  # type: ignore [no-untyped-call]
+        x[1:, 2], 3 * np.ones((2,))
+    )
+    np.testing.assert_equal(  # type: ignore [no-untyped-call]
+        x[2, 1:], 3 * np.ones((2,))
+    )
+    np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
