@@ -356,11 +356,11 @@ def naive_fusion_isotropic_grid(
 
     if show_overlaps:
         paint_in = paint_in_with_overlaps
-        lbl = np.zeros(shape, dtype=np.intc)
+        # lbl = np.zeros(shape, dtype=np.intc)
         big_lbl = np.zeros(big_shape, dtype=np.intc)
     else:
         paint_in = paint_in_without_overlaps
-        lbl = np.zeros(shape, dtype=np.uint16)
+        # lbl = np.zeros(shape, dtype=np.uint16)
         big_lbl = np.zeros(big_shape, dtype=np.uint16)
 
     sorted_probs_j = 0
@@ -384,7 +384,7 @@ def naive_fusion_isotropic_grid(
         ind = tuple(max_ind) + (slice(None),)
 
         slices, point = this_slice_point(points[ind], max_dist)
-        shape_paint = lbl[slices].shape
+        shape_paint = new_probs[slices].shape
 
         new_shape = (
             poly_to_label(
@@ -465,7 +465,7 @@ def naive_fusion_isotropic_grid(
         current_probs[new_shape] = -1
         new_probs[slices] = current_probs
 
-        lbl[slices] = paint_in(lbl[slices], new_shape, current_id)
+        # lbl[slices] = paint_in(lbl[slices], new_shape, current_id)
 
         big_lbl[big_slices] = paint_in(big_lbl[big_slices], big_new_shape, current_id)
 
