@@ -675,3 +675,47 @@ def test_paint_in_with_overlaps() -> None:
     )
     np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
     np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
+
+
+def test_polygon_list_with_probs_2d() -> None:
+    """Test if overlapping areas get higher probability."""
+    n_rays = 20
+
+    s = 8
+    shape = (s, s)
+    dists = np.zeros(shape + (n_rays,))
+    probs = np.zeros(shape)
+
+    # object 1
+    z0 = s // 4
+    dist = 3
+    prob0 = 0.9
+    dists[z0, z0, :] = dist
+    probs[z0, z0] = prob0
+
+    # object 2
+    z1 = s // 4 * 3 - 1
+    dists[z1, z1, :] = dist
+    prob1 = 0.8
+    probs[z1, z1] = prob1
+
+    new_dists = np.full((2, n_rays), dist)
+    new_points: npt.NDArray[np.double] = np.array([[z0, z0], [z1, z1]])
+    new_probs: npt.NDArray[np.float] = np.array([prob0, prob1])
+
+    lbl, prob_array = nf.poly_list_with_probs(
+        new_dists, new_points, new_probs, shape, nf.my_polygons_list_to_label
+    )
+    # set overlapping labels to correct ids
+    print(lbl)
+    print(prob_array)
+
+    test_array = np.zeros(shape)
+    test_array[:5, :5] = prob0
+    test_array[2, 5] = prob0
+    test_array[5, 2] = prob0
+    test_array[5:, 3:] = prob1
+    test_array[3:, 5:] = prob1
+    print(test_array)
+
+    np.testing.assert_equal(prob_array, test_array)

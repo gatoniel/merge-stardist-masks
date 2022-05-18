@@ -93,6 +93,28 @@ PolyToLabelSignature = Callable[
 ]
 
 
+def poly_list_with_probs(
+    dists_: ArrayLike,
+    points_: ArrayLike,
+    probs_: ArrayLike,
+    shape: Tuple[int, ...],
+    poly_list_func: PolyToLabelSignature,
+) -> Tuple[npt.NDArray[np.int_], npt.NDArray[float]]:
+    """Return labels and according probabilities."""
+    inds = np.argsort(probs_)
+    probs = probs_[inds]
+    dists = dists_[inds]
+    points = points_[inds]
+
+    lbl: npt.NDArray[np.int_] = poly_list_func(dists, points, shape)
+
+    prob_array = np.zeros_like(lbl, dtype=float)
+    for i in range(1, len(probs) + 1):
+        prob_array[lbl == i] = probs[i - 1]
+
+    return (lbl, prob_array)
+
+
 def get_poly_to_label(
     shape: Tuple[int, ...], rays: Optional[Rays_Base]
 ) -> PolyToLabelSignature:
@@ -379,6 +401,7 @@ def naive_fusion_isotropic_grid(
             break
 
         max_ind = np.unravel_index(max_ind, new_probs.shape)
+        big_new_shape_prob = [float(new_probs[tuple(max_ind)])]
         new_probs[tuple(max_ind)] = -1
 
         ind = tuple(max_ind) + (slice(None),)
@@ -421,6 +444,7 @@ def naive_fusion_isotropic_grid(
                 break
 
             max_ind_within = np.argmax(probs_within)
+            this_prob = float(probs_within[max_ind_within])
             probs_within[max_ind_within] = -1
 
             current_probs[new_shape] = probs_within
@@ -452,6 +476,7 @@ def naive_fusion_isotropic_grid(
                 big_new_shape_points.append(
                     big_point + (this_point - points[ind]) * grid
                 )
+                big_new_shape_prob.append(this_prob)
 
         big_new_shape: npt.NDArray[np.bool_] = (
             poly_list_to_label(
