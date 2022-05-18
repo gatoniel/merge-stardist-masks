@@ -451,6 +451,46 @@ def test_naive_fusion_2d_with_overlaps() -> None:
     np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
 
 
+def test_naive_fusion_2d_respect_probs() -> None:
+    """Test naive fusion with overlaping points in 2d with one having higher prob."""
+    n_rays = 20
+
+    s = 8
+    shape = (s, s)
+    dists = np.zeros(shape + (n_rays,))
+    probs = np.zeros(shape)
+
+    # object 1
+    z0 = s // 4
+    dist = 3
+    dists[z0, z0, :] = dist
+    probs[z0, z0] = 0.9
+
+    # object 2
+    z1 = s // 4 * 3 - 1
+    dists[z1, z1, :] = dist
+    probs[z1, z1] = 0.8
+
+    lbl = nf.naive_fusion(
+        dists,
+        probs,
+        grid=(1, 1),
+        respect_probs=True,
+    )
+
+    label = np.zeros(shape, dtype=np.uint16)
+    # set overlapping labels to correct ids
+    label[3:, 3:] = 2
+    label[3:5, 3:5] = 1
+    label[2, 5] = 1
+    label[5, 2] = 1
+    label[:5, :5] = 1
+    print(lbl)
+    print(label)
+
+    np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
+
+
 def test_naive_fusion_2d_anisotropic() -> None:
     """Test naive fusion with overlaping points in 2d with anisotropic grid."""
     n_rays = 20
@@ -502,6 +542,14 @@ def test_naive_fusion_2d_anisotropic() -> None:
     print(label)
 
     np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
+
+
+def test_raise_not_implemented_respect_probs() -> None:
+    """Respect_probs set to true with anisotropic grid is not implemented."""
+    with pytest.raises(NotImplementedError):
+        nf.naive_fusion(
+            np.empty((3, 3, 3)), np.empty((3, 3)), grid=(1, 2, 2), respect_probs=True
+        )
 
 
 def test_naive_fusion_2d_winding() -> None:
@@ -677,6 +725,80 @@ def test_paint_in_with_overlaps() -> None:
     np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
 
 
+def test_paint_in_without_overlaps_check_probs() -> None:
+    """Set values of an array and respect their probabilities function."""
+    shape = (3, 3)
+    lbl = np.zeros(shape, dtype=bool)
+    new_probs = np.zeros(shape)
+    lbl[1:, 1:] = True
+    new_probs[1:, 1:] = 0.9
+    new_probs[2, 2] = 0.95
+
+    # nothing in paint_in
+    paint_in = np.zeros(shape)
+    old_probs = np.zeros(shape)
+    x, p = nf.paint_in_without_overlaps_check_probs(
+        paint_in, lbl, old_probs, new_probs, 1
+    )
+
+    np.testing.assert_equal(  # type: ignore [no-untyped-call]
+        x[1:, 1:], np.ones((2, 2))
+    )
+    np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
+
+    np.testing.assert_equal(p, new_probs)  # type: ignore [no-untyped-call]
+
+    # too low probability in old_probs
+    old_probs[1, 1] = 0.8
+    paint_in[1, 1] = 3
+    x, p = nf.paint_in_without_overlaps_check_probs(
+        paint_in, lbl, old_probs, new_probs, 1
+    )
+
+    np.testing.assert_equal(  # type: ignore [no-untyped-call]
+        x[1:, 1:], np.ones((2, 2))
+    )
+    np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
+
+    np.testing.assert_equal(p, new_probs)  # type: ignore [no-untyped-call]
+
+    # too low probability in old_probs
+    old_probs[2, 2] = 0.93
+    paint_in[2, 2] = 3
+    x, p = nf.paint_in_without_overlaps_check_probs(
+        paint_in, lbl, old_probs, new_probs, 1
+    )
+
+    np.testing.assert_equal(  # type: ignore [no-untyped-call]
+        x[1:, 1:], np.ones((2, 2))
+    )
+    np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
+
+    np.testing.assert_equal(p, new_probs)  # type: ignore [no-untyped-call]
+
+    # too high probability in old_probs
+    old_probs[1, 1] = 0.93
+    paint_in[1, 1] = 3
+    x, p = nf.paint_in_without_overlaps_check_probs(
+        paint_in, lbl, old_probs, new_probs, 1
+    )
+
+    x_ = np.ones((2, 2))
+    x_[0, 0] = 3
+    np.testing.assert_equal(x[1:, 1:], x_)  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
+
+    p_ = np.zeros(shape)
+    p_[1:, 1:] = 0.9
+    p_[1, 1] = 0.93
+    p_[2, 2] = 0.95
+    np.testing.assert_equal(p, p_)  # type: ignore [no-untyped-call]
+
+
 def test_polygon_list_with_probs_2d() -> None:
     """Test if overlapping areas get higher probability."""
     n_rays = 20
@@ -701,12 +823,11 @@ def test_polygon_list_with_probs_2d() -> None:
 
     new_dists = np.full((2, n_rays), dist)
     new_points: npt.NDArray[np.double] = np.array([[z0, z0], [z1, z1]])
-    new_probs: npt.NDArray[np.float] = np.array([prob0, prob1])
+    new_probs: npt.NDArray[np.single] = np.array([prob0, prob1])
 
     lbl, prob_array = nf.poly_list_with_probs(
         new_dists, new_points, new_probs, shape, nf.my_polygons_list_to_label
     )
-    # set overlapping labels to correct ids
     print(lbl)
     print(prob_array)
 
@@ -718,4 +839,4 @@ def test_polygon_list_with_probs_2d() -> None:
     test_array[3:, 5:] = prob1
     print(test_array)
 
-    np.testing.assert_equal(prob_array, test_array)
+    np.testing.assert_equal(prob_array, test_array)  # type: ignore [no-untyped-call]
