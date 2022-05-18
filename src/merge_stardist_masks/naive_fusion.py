@@ -509,6 +509,7 @@ def naive_fusion_isotropic_grid(
                 if erase_probs_at_full_overlap:
                     current_probs[additional_shape] = -1
             else:
+                full_overlaps = 0
                 big_new_shape_dists.append(this_dist)
                 big_new_shape_points.append(
                     big_point + (this_point - points[ind]) * grid
@@ -725,6 +726,8 @@ def naive_fusion_anisotropic_grid(
                 full_overlaps += 1
                 if erase_probs_at_full_overlap:
                     current_probs[additional_shape] = -1
+            else:
+                full_overlaps = 0
 
         current_probs[new_shape] = -1
         new_probs[slices] = current_probs
