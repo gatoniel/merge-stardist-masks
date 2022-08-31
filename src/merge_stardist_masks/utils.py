@@ -6,8 +6,8 @@ import os
 from typing import Optional
 from typing import Tuple
 
-from stardist.rays3d import Rays_Base
-from stardist.rays3d import rays_from_json  # type: ignore [import]
+from stardist.rays3d import Rays_Base  # type: ignore [import]
+from stardist.rays3d import rays_from_json
 
 
 def rays_from_path(path: str) -> Optional[Rays_Base]:
