@@ -831,7 +831,7 @@ python-versions = "*"
 
 [[package]]
 name = "pyupgrade"
-version = "2.38.2"
+version = "3.0.0"
 description = "A tool to automatically upgrade syntax for newer versions."
 category = "dev"
 optional = false
@@ -1360,7 +1360,7 @@ testing = ["func-timeout", "jaraco.itertools", "pytest (>=6)", "pytest-black (>=
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.10"
-content-hash = "050b5b3421facaebdb8a51427623d811cc28fae8d69e8e20e68ee74c41693e5a"
+content-hash = "52053ae0870321f4f9b56e5d1034c95e719e7ef3963231e9ce645f8c34ad9d9c"
 
 [metadata.files]
 alabaster = [
@@ -1988,8 +1988,8 @@ pytz = [
     {file = "pytz-2021.3.tar.gz", hash = "sha256:acad2d8b20a1af07d4e4c9d2e9285c5ed9104354062f275f3fcd88dcef4f1326"},
 ]
 pyupgrade = [
-    {file = "pyupgrade-2.38.2-py2.py3-none-any.whl", hash = "sha256:41bb9a9fd48fe57163b0dacffff433d6d5a63a0f7c2402918917b5f1a533342b"},
-    {file = "pyupgrade-2.38.2.tar.gz", hash = "sha256:a5d778c9de0b53975c6a9eac2d0df5adfad244a9f7d7993d8a114223ebbda367"},
+    {file = "pyupgrade-3.0.0-py2.py3-none-any.whl", hash = "sha256:f9ba6cb58713e7249f4f0486e425969618e953062a5fc805da9d21602a2d1441"},
+    {file = "pyupgrade-3.0.0.tar.gz", hash = "sha256:6ec1e2762d887cab94a5714b2ea7e944843d8c2de36c449d443e52ffac8ab14f"},
 ]
 pywavelets = [
     {file = "PyWavelets-1.2.0-cp310-cp310-macosx_10_13_universal2.whl", hash = "sha256:4c29efb581245e4ba3e76b23b1bf254a7c79821d7e63f432e68044cf2d233e9e"},
