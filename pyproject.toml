@@ -42,7 +42,7 @@ pre-commit-hooks = "^4.3.0"
 Pygments = "^2.13.0"
 pyupgrade = "^3.0.0"
 furo = ">=2021.11.12"
-pytest-mock = "^3.8.2"
+pytest-mock = "^3.9.0"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
