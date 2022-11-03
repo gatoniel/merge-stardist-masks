@@ -259,8 +259,19 @@ def show_overlaps(request: FixtureRequestBool) -> bool:
     return request.param
 
 
+@pytest.fixture(params=[True, False])
+def respect_probs(request: FixtureRequestBool) -> bool:
+    """Switch between true and false."""
+    return request.param
+
+
+@pytest.mark.filterwarnings(
+    "ignore: respect_probs was set to 'false' as show_overlaps is 'true'"
+)
 def test_naive_fusion_3d(
-    erase_probs_at_full_overlap: bool, show_overlaps: bool
+    erase_probs_at_full_overlap: bool,
+    show_overlaps: bool,
+    respect_probs: bool,
 ) -> None:
     """Test naive fusion with only two points that overlap."""
     n_rays = 40
@@ -303,6 +314,7 @@ def test_naive_fusion_3d(
         grid=(g, g, g),
         erase_probs_at_full_overlap=erase_probs_at_full_overlap,
         show_overlaps=show_overlaps,
+        respect_probs=respect_probs,
     )
     lbl_iso = nf.naive_fusion_isotropic_grid(
         dists,
@@ -311,6 +323,7 @@ def test_naive_fusion_3d(
         grid=g,
         erase_probs_at_full_overlap=erase_probs_at_full_overlap,
         show_overlaps=show_overlaps,
+        respect_probs=respect_probs,
     )
     lbl_aniso = nf.naive_fusion_anisotropic_grid(
         dists,
@@ -319,6 +332,7 @@ def test_naive_fusion_3d(
         grid=(g, g, g),
         erase_probs_at_full_overlap=erase_probs_at_full_overlap,
         show_overlaps=show_overlaps,
+        respect_probs=respect_probs,
     )
 
     new_dists = np.full((3, n_rays), dist)
@@ -339,7 +353,12 @@ def test_naive_fusion_3d(
     np.testing.assert_array_equal(lbl_aniso, label)  # type: ignore [no-untyped-call]
 
 
-def test_naive_fusion_2d(erase_probs_at_full_overlap: bool) -> None:
+@pytest.mark.filterwarnings(
+    "ignore: respect_probs was set to 'false' as show_overlaps is 'true'"
+)
+def test_naive_fusion_2d(
+    erase_probs_at_full_overlap: bool, respect_probs: bool
+) -> None:
     """Test naive fusion with overlaping points in 2d."""
     n_rays = 20
 
@@ -378,18 +397,21 @@ def test_naive_fusion_2d(erase_probs_at_full_overlap: bool) -> None:
         probs,
         grid=(g, g),
         erase_probs_at_full_overlap=erase_probs_at_full_overlap,
+        respect_probs=respect_probs,
     )
     lbl_iso = nf.naive_fusion_isotropic_grid(
         dists,
         probs,
         grid=g,
         erase_probs_at_full_overlap=erase_probs_at_full_overlap,
+        respect_probs=respect_probs,
     )
     lbl_aniso = nf.naive_fusion_anisotropic_grid(
         dists,
         probs,
         grid=(g, g),
         erase_probs_at_full_overlap=erase_probs_at_full_overlap,
+        respect_probs=respect_probs,
     )
 
     new_dists = np.full((3, n_rays), dist)
@@ -544,14 +566,6 @@ def test_naive_fusion_2d_anisotropic() -> None:
     np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
 
 
-def test_raise_not_implemented_respect_probs() -> None:
-    """Respect_probs set to true with anisotropic grid is not implemented."""
-    with pytest.raises(NotImplementedError):
-        nf.naive_fusion(
-            np.empty((3, 3, 3)), np.empty((3, 3)), grid=(1, 2, 2), respect_probs=True
-        )
-
-
 def test_naive_fusion_2d_winding() -> None:
     """Test naive fusion with a winding object in 2d."""
     new_points = np.array(
@@ -623,6 +637,32 @@ def test_naive_fusion_2d_winding() -> None:
     np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
         lbl_no_slicing_anisotropic, label
     )
+
+
+def test_respect_probs_warning_in_naive_fusion() -> None:
+    """Warning expected when respect_probs and show_overlaps both are true."""
+    n_rays = 20
+    rays = Rays_GoldenSpiral(n=n_rays)
+
+    s = 6
+    shape = (s, s, s)
+    dists = np.zeros(shape + (n_rays,))
+    probs = np.zeros(shape)
+
+    with pytest.warns(
+        UserWarning,
+        match="respect_probs was set to 'false' as show_overlaps is 'true'",
+    ):
+        nf.naive_fusion_anisotropic_grid(
+            dists, probs, rays, respect_probs=True, show_overlaps=True
+        )
+    with pytest.warns(
+        UserWarning,
+        match="respect_probs was set to 'false' as show_overlaps is 'true'",
+    ):
+        nf.naive_fusion_isotropic_grid(
+            dists, probs, rays, respect_probs=True, show_overlaps=True
+        )
 
 
 def test_value_error_because_of_shape_in_naive_fusion() -> None:
