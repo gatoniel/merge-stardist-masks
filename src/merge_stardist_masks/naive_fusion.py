@@ -1,6 +1,7 @@
 """Naively merge all masks that have sufficient overlap and probability."""
 from __future__ import annotations
 
+import warnings
 from functools import partial
 from typing import Callable
 from typing import Optional
@@ -278,7 +279,7 @@ def naive_fusion(
             a full overlap is detected.
         show_overlaps: If set to true, overlaps are set to ``-1``.
         respect_probs: If set to true, overlapping elements are overwritten by
-            considering their probabilities. Only works with uniform grid.
+            considering their probabilities. Only works when show_overlaps is 'false'.
 
     Returns:
         The label image with uint16 labels. For 2D, the shape is
@@ -311,10 +312,6 @@ def naive_fusion(
             respect_probs=respect_probs,
         )
     else:
-        if respect_probs:
-            raise NotImplementedError(
-                "respect_probs=True is only available for isotropic grid."
-            )
         return naive_fusion_anisotropic_grid(
             dists,
             probs,
@@ -325,6 +322,7 @@ def naive_fusion(
             max_full_overlaps,
             erase_probs_at_full_overlap=erase_probs_at_full_overlap,
             show_overlaps=show_overlaps,
+            respect_probs=respect_probs,
         )
 
 
@@ -368,7 +366,7 @@ def naive_fusion_isotropic_grid(
             a full overlap is detected.
         show_overlaps: If set to true, overlaps are set to ``-1``.
         respect_probs: If set to true, overlapping elements are overwritten by
-            considering their probabilities.
+            considering their probabilities. Only works when show_overlaps is 'false'.
 
     Returns:
         The label image with uint16 labels. For 2D, the shape is
@@ -415,6 +413,9 @@ def naive_fusion_isotropic_grid(
         paint_in = paint_in_with_overlaps
         # lbl = np.zeros(shape, dtype=np.intc)
         big_lbl = np.zeros(big_shape, dtype=np.intc)
+        if respect_probs:
+            respect_probs = False
+            warnings.warn("respect_probs was set to 'false' as show_overlaps is 'true'")
     else:
         big_lbl = np.zeros(big_shape, dtype=np.uint16)
         if respect_probs:
@@ -566,6 +567,7 @@ def naive_fusion_anisotropic_grid(
     max_full_overlaps: int = 2,
     erase_probs_at_full_overlap: bool = False,
     show_overlaps: bool = False,
+    respect_probs: bool = False,
 ) -> Union[npt.NDArray[np.uint16], npt.NDArray[np.intc]]:
     """Merge overlapping masks given by dists, probs, rays for anisotropic grid.
 
@@ -595,6 +597,8 @@ def naive_fusion_anisotropic_grid(
         erase_probs_at_full_overlap: If set to ``True`` probs are set to -1 whenever
             a full overlap is detected.
         show_overlaps: If set to true, overlaps are set to ``-1``.
+        respect_probs: If set to true, overlapping elements are overwritten by
+            considering their probabilities. Only works when show_overlaps is 'false'.
 
     Returns:
         The label image with uint16 labels. For 2D, the shape is
@@ -640,9 +644,14 @@ def naive_fusion_anisotropic_grid(
     if show_overlaps:
         paint_in = paint_in_with_overlaps
         lbl = np.zeros(big_shape, dtype=np.intc)
+        if respect_probs:
+            respect_probs = False
+            warnings.warn("respect_probs was set to 'false' as show_overlaps is 'true'")
     else:
         paint_in = paint_in_without_overlaps
         lbl = np.zeros(big_shape, dtype=np.uint16)
+        if respect_probs:
+            old_probs = np.zeros_like(lbl, dtype=np.single)
 
     sorted_probs_j = 0
     current_id = 1
@@ -662,6 +671,7 @@ def naive_fusion_anisotropic_grid(
             break
 
         max_ind = np.unravel_index(max_ind, new_probs.shape)
+        this_prob = float(new_probs[tuple(max_ind)])
         new_probs[tuple(max_ind)] = -1
 
         ind = tuple(max_ind) + (slice(None),)
@@ -676,6 +686,9 @@ def naive_fusion_anisotropic_grid(
             ]
         )
         new_shape = poly_to_label(dists[dists_ind], point, shape_paint) == 1
+        if respect_probs:
+            shape_probs = np.zeros(shape_paint, dtype=np.single)
+            shape_probs[new_shape] = this_prob
 
         current_probs = new_probs[slices]
         tmp_slices = tuple(
@@ -696,6 +709,7 @@ def naive_fusion_anisotropic_grid(
                 break
 
             max_ind_within = np.argmax(probs_within)
+            this_prob = float(probs_within[max_ind_within])
             probs_within[max_ind_within] = -1
 
             current_probs[new_shape] = probs_within
@@ -715,6 +729,11 @@ def naive_fusion_anisotropic_grid(
                 )
                 > 0
             )
+            if respect_probs:
+                additional_probs = np.logical_and(
+                    additional_shape, np.logical_not(new_shape)
+                )
+                shape_probs[additional_probs] = this_prob
 
             size_of_current_shape = np.sum(new_shape)
 
@@ -732,7 +751,16 @@ def naive_fusion_anisotropic_grid(
         current_probs[new_shape] = -1
         new_probs[slices] = current_probs
 
-        lbl[slices] = paint_in(lbl[slices], new_shape, current_id)
+        if respect_probs:
+            lbl[slices], old_probs[slices] = paint_in_without_overlaps_check_probs(
+                lbl[slices],
+                new_shape,
+                old_probs[slices],
+                shape_probs,
+                current_id,
+            )
+        else:
+            lbl[slices] = paint_in(lbl[slices], new_shape, current_id)
 
         current_id += 1
 
