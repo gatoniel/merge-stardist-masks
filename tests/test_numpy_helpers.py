@@ -10,13 +10,17 @@ def test_cycling_through_array() -> None:
         x = np.arange(9).reshape((3, 3))
 
         sort = nh.start_cycling_through_array(x, 3)
-        np.testing.assert_array_equal(sort, np.array([8, 7, 6, 5, 4]))
+        np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
+            sort, np.array([8, 7, 6, 5, 4])
+        )
 
         ind, sort, status = func(x, sort, 0)
 
         assert ind == 8
         assert status
-        np.testing.assert_array_equal(sort, np.array([7, 6, 5, 4]))
+        np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
+            sort, np.array([7, 6, 5, 4])
+        )
 
         x[2, :] = -1
 
@@ -24,7 +28,9 @@ def test_cycling_through_array() -> None:
 
         assert ind == 5
         assert status
-        np.testing.assert_array_equal(sort, np.array([4]))
+        np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
+            sort, np.array([4])
+        )
 
         x[...] = -1
         ind, sort, status = func(x, sort, 0)

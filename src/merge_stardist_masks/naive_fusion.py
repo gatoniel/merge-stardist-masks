@@ -16,6 +16,9 @@ from stardist.geometry.geom3d import polyhedron_to_label  # type: ignore [import
 from stardist.rays3d import Rays_Base  # type: ignore [import]
 from stardist.utils import _normalize_grid  # type: ignore [import]
 
+from .numpy_helpers import cycle_through_array
+from .numpy_helpers import start_cycling_through_array
+
 
 T = TypeVar("T", bound=np.generic)
 ArrayLike = npt.ArrayLike
@@ -393,10 +396,7 @@ def naive_fusion_isotropic_grid(
 
     points = mesh_from_shape(probs.shape)
 
-    inds_thresh = new_probs > prob_thresh
-    sum_thresh = np.sum(inds_thresh)
-
-    prob_sort = np.argsort(new_probs, axis=None)[::-1][:sum_thresh]
+    prob_sort = start_cycling_through_array(new_probs, prob_thresh)
 
     big_shape = tuple(s * grid for s in shape)
 
@@ -423,19 +423,10 @@ def naive_fusion_isotropic_grid(
         paint_in = paint_in_without_overlaps
         # lbl = np.zeros(shape, dtype=np.uint16)
 
-    sorted_probs_j = 0
     current_id = 1
     while True:
-        newly_sorted_probs = np.take_along_axis(  # type: ignore [no-untyped-call]
-            new_probs, prob_sort, axis=None
-        )
-
-        while sorted_probs_j < sum_thresh:
-            if newly_sorted_probs[sorted_probs_j] > 0:
-                max_ind = prob_sort[sorted_probs_j]
-                break
-            sorted_probs_j += 1
-        if sorted_probs_j >= sum_thresh:
+        max_ind, prob_sort, status = cycle_through_array(new_probs, prob_sort, 0.0)
+        if not status:
             break
 
         max_ind = np.unravel_index(max_ind, new_probs.shape)
@@ -631,10 +622,7 @@ def naive_fusion_anisotropic_grid(
     new_probs = inflate_array(probs, grid, default_value=-1)
     points = inflate_array(points_from_grid(probs.shape, grid), grid, default_value=0)
 
-    inds_thresh: npt.NDArray[np.bool_] = new_probs > prob_thresh
-    sum_thresh = np.sum(inds_thresh)
-
-    prob_sort = np.argsort(new_probs, axis=None)[::-1][:sum_thresh]
+    prob_sort = start_cycling_through_array(new_probs, prob_thresh)
 
     if no_slicing:
         this_slice_point = no_slicing_slice_point
@@ -653,21 +641,10 @@ def naive_fusion_anisotropic_grid(
         if respect_probs:
             old_probs = np.zeros_like(lbl, dtype=np.single)
 
-    sorted_probs_j = 0
     current_id = 1
     while True:
-        # In case this is always a view of new_probs that changes when new_probs changes
-        # this line should be placed outside of this while-loop.
-        newly_sorted_probs = np.take_along_axis(  # type: ignore [no-untyped-call]
-            new_probs, prob_sort, axis=None
-        )
-
-        while sorted_probs_j < sum_thresh:
-            if newly_sorted_probs[sorted_probs_j] > 0:
-                max_ind = prob_sort[sorted_probs_j]
-                break
-            sorted_probs_j += 1
-        if sorted_probs_j >= sum_thresh:
+        max_ind, prob_sort, status = cycle_through_array(new_probs, prob_sort, 0.0)
+        if not status:
             break
 
         max_ind = np.unravel_index(max_ind, new_probs.shape)
