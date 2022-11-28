@@ -1,7 +1,7 @@
 """Stardist 3D data generator for new weights and probability maps."""
-from typing import List
-from typing import Tuple
-from typing import TypeVar
+from typing import List  # pragma: no cover
+from typing import Tuple  # pragma: no cover
+from typing import TypeVar  # pragma: no cover
 
 import numpy as np  # pragma: no cover
 import numpy.typing as npt
@@ -20,7 +20,7 @@ from .touching_pixels import bordering_gaussian_weights  # pragma: no cover
 from .touching_pixels import touching_pixels_3d  # pragma: no cover
 
 
-T = TypeVar("T", bound=np.generic)
+T = TypeVar("T", bound=np.generic)  # pragma: no cover
 
 
 class OptimizedStarDistData3D(StarDistData3D):  # type: ignore [misc] # pragma: no cover
