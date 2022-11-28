@@ -63,13 +63,11 @@ class OptimizedStarDistData3D(StarDistData3D):  # type: ignore [misc] # pragma: 
         tmp_prob_ = [
             edt_prob(lbl, anisotropy=self.anisotropy)[self.ss_grid[1:]] for lbl in ys
         ]
-        tmp_touching_ = [touching_pixels_3d(lbl) for lbl in ys]
-        tmp_touching_edt_ = [
-            bordering_gaussian_weights(mask, lbl, sigma=2)
-            for mask, lbl in zip(tmp_touching_, ys)
+        tmp_touching = [touching_pixels_3d(lbl[self.ss_grid[1:]]) for lbl in ys]
+        tmp_touching_edt = [
+            bordering_gaussian_weights(mask, lbl[self.ss_grid[1:]], sigma=2)
+            for mask, lbl in zip(tmp_touching, ys)
         ]
-        tmp_touching = [t[self.ss_grid[1:]] for t in tmp_touching_]
-        tmp_touching_edt = [t[self.ss_grid[1:]] for t in tmp_touching_edt_]
         if len(ys) == 1:
             prob_ = tmp_prob_[0][np.newaxis]
             touching = tmp_touching[0][np.newaxis]
