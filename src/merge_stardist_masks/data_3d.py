@@ -31,7 +31,7 @@ class OptimizedStarDistData3D(StarDistData3D):  # type: ignore [misc] # pragma: 
         idx = self.batch(i)
         arrays = [
             sample_patches(
-                (self.ys[k],) + self.channels_as_tuple(self.xs[k]),
+                (self.Y[k],) + self.channels_as_tuple(self.X[k]),
                 patch_size=self.patch_size,
                 n_samples=1,
                 valid_inds=self.get_valid_inds(k),
