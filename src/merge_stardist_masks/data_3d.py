@@ -4,7 +4,7 @@ from typing import Tuple  # pragma: no cover
 from typing import TypeVar  # pragma: no cover
 
 import numpy as np  # pragma: no cover
-import numpy.typing as npt
+import numpy.typing as npt  # pragma: no cover
 from scipy.ndimage import zoom  # type: ignore [import] # pragma: no cover
 from stardist.geometry import star_dist3D  # type: ignore [import] # pragma: no cover
 from stardist.models.model3d import (  # type: ignore [import] # pragma: no cover
