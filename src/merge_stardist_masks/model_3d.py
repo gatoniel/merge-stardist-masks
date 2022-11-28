@@ -1,15 +1,15 @@
 """Stardist 3D model with new weights and probability maps."""
 from unittest.mock import patch  # pragma: no cover
 
-from stardist.models import StarDist3D  # pragma: no cover
+from stardist.models import StarDist3D  # type: ignore [import] # pragma: no cover
 
 from .data_3d import OptimizedStarDistData3D  # pragma: no cover
 
 
-class OptimizedStarDist3D(StarDist3D):  # pragma: no cover
+class OptimizedStarDist3D(StarDist3D):  # type: ignore [misc] # pragma: no cover
     """Overwrite train method to use different data generator."""
 
-    def train(
+    def train(  # type: ignore [no-untyped-def]
         self,
         x,
         y,
