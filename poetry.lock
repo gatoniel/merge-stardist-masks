@@ -2379,19 +2379,27 @@ files = [
 
 [[package]]
 name = "typeguard"
-version = "2.13.3"
+version = "3.0.0rc1"
 description = "Run-time type checker for Python"
 category = "dev"
 optional = false
-python-versions = ">=3.5.3"
-files = [
-    {file = "typeguard-2.13.3-py3-none-any.whl", hash = "sha256:5e3e3be01e887e7eafae5af63d1f36c849aaa94e3a0112097312aabfa16284f1"},
-    {file = "typeguard-2.13.3.tar.gz", hash = "sha256:00edaa8da3a133674796cf5ea87d9f4b4c367d77476e185e80251cc13dfbb8c4"},
-]
+python-versions = ">=3.7.4"
+files = []
+develop = false
+
+[package.dependencies]
+importlib_metadata = {version = ">=3.6", markers = "python_version < \"3.10\""}
+typing_extensions = {version = ">=4.4.0", markers = "python_version < \"3.11\""}
 
 [package.extras]
-doc = ["sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme"]
-test = ["mypy", "pytest", "typing-extensions"]
+doc = ["packaging", "sphinx-autodoc-typehints (>=1.2.0)", "sphinx_rtd_theme"]
+test = ["mypy (>=0.991)", "pytest"]
+
+[package.source]
+type = "git"
+url = "https://github.com/agronholm/typeguard.git"
+reference = "3.0.0rc1"
+resolved_reference = "94939318fe53575fd0f17d38f2254ac8dc27f8d5"
 
 [[package]]
 name = "typing-extensions"
@@ -2492,5 +2500,5 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 
 [metadata]
 lock-version = "2.0"
-python-versions = ">=3.7,<3.10"
-content-hash = "fe202cae4d44343900f6a4319abec89d8d17cdf585666db5b4a28cc5f5691ff7"
+python-versions = ">=3.7.4,<3.10"
+content-hash = "65d4c44e849267ac9296b4b7340b2ceeae42ecaa10dde2780365d62c5f8a0287"
