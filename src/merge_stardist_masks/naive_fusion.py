@@ -415,7 +415,10 @@ def naive_fusion_isotropic_grid(
         big_lbl = np.zeros(big_shape, dtype=np.intc)
         if respect_probs:
             respect_probs = False
-            warnings.warn("respect_probs was set to 'false' as show_overlaps is 'true'")
+            warnings.warn(
+                "respect_probs was set to 'false' as show_overlaps is 'true'",
+                stacklevel=2,
+            )
     else:
         big_lbl = np.zeros(big_shape, dtype=np.uint16)
         if respect_probs:
@@ -646,7 +649,10 @@ def naive_fusion_anisotropic_grid(
         lbl = np.zeros(big_shape, dtype=np.intc)
         if respect_probs:
             respect_probs = False
-            warnings.warn("respect_probs was set to 'false' as show_overlaps is 'true'")
+            warnings.warn(
+                "respect_probs was set to 'false' as show_overlaps is 'true'",
+                stacklevel=2,
+            )
     else:
         paint_in = paint_in_without_overlaps
         lbl = np.zeros(big_shape, dtype=np.uint16)
