@@ -33,7 +33,9 @@ def points_from_grid(
 ) -> npt.NDArray[np.int_]:
     """Generate array giving out points for indices."""
     mesh = mesh_from_shape(shape)
-    grid_array = np.array(_normalize_grid(grid, len(shape))).reshape(1, len(shape))
+    grid_array: npt.NDArray[np.int_] = np.array(
+        _normalize_grid(grid, len(shape))
+    ).reshape(1, len(shape))
     return mesh * grid_array
 
 
