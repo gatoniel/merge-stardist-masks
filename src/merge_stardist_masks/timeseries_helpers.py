@@ -14,10 +14,16 @@ S = TypeVar("S", bound=np.generic)
 def timeseries_to_batch(x: npt.NDArray[T], len_t: int = 3) -> list[npt.NDArray[T]]:
     """Turn the array of shape (T, Y, X, c) into subarrays of shape (len_t, Y, X, c)."""
     subviews = np.moveaxis(
-        np.lib.stride_tricks.sliding_window_view(x, len_t, axis=0), -1, 1
+        np.lib.stride_tricks.sliding_window_view(  # type: ignore [no-untyped-call]
+            x, len_t, axis=0
+        ),
+        -1,
+        1,
     )
 
-    list_subviews = np.split(subviews, subviews.shape[0], axis=0)
+    list_subviews = np.split(  # type: ignore [no-untyped-call]
+        subviews, subviews.shape[0], axis=0
+    )
     return [np.take(subview, 0, axis=0) for subview in list_subviews]
 
 
@@ -31,5 +37,12 @@ def average_over_window(windows: npt.NDArray[T]) -> npt.NDArray[T]:
     for i in range(len_w):
         before = np.repeat(empty, i, axis=0)
         after = np.repeat(empty, total_num - i, axis=0)
-        arrays.append(np.concatenate((before, windows[:, i, ...], after), axis=0))
-    return np.nanmean(np.stack(arrays, axis=-1), axis=-1)
+        arrays.append(
+            np.concatenate(  # type: ignore [no-untyped-call]
+                (before, windows[:, i, ...], after), axis=0
+            )
+        )
+    mean: npt.NDArray[T] = np.nanmean(  # type: ignore [no-untyped-call]
+        np.stack(arrays, axis=-1), axis=-1
+    )
+    return mean

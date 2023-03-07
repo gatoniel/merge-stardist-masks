@@ -22,7 +22,11 @@ def test_model_conf_train_predict(
     if n_channel > 1:
         img = np.repeat(img[..., np.newaxis], n_channel, axis=-1)
 
-    imgs = [np.copy(img), np.copy(img), img]
+    imgs = [
+        np.copy(img),  # type: ignore [no-untyped-call]
+        np.copy(img),  # type: ignore [no-untyped-call]
+        img,
+    ]
 
     xs = [img + 0.6 * np.random.uniform(0, 1, img.shape) for img in imgs]
     if n_channel > 1:

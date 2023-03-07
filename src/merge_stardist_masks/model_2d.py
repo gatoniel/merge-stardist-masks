@@ -2,9 +2,13 @@
 from __future__ import annotations
 
 import warnings
+from typing import List
+from typing import Optional
+from typing import Tuple
 from unittest.mock import patch
 
 import numpy as np
+import numpy.typing as npt
 import tensorflow as tf
 from csbdeep.internals.blocks import unet_block
 from csbdeep.internals.predict import tile_iterator
@@ -29,6 +33,7 @@ from tqdm import tqdm
 
 from .config_2d import StackedTimepointsConfig2D
 from .data_2d import OptimizedStackedTimepointsData2D
+from .data_base import AugmenterSignature
 from .timeseries_helpers import timeseries_to_batch
 
 # from stardist.utils import _is_power_of_2
@@ -251,14 +256,16 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
 
     def train(
         self,
-        x,
-        y,
-        validation_data,
-        classes="auto",
-        augmenter=None,
-        seed=None,
-        epochs=None,
-        steps_per_epoch=None,
+        x: List[npt.NDArray[np.double]],
+        y: List[npt.NDArray[np.int_]],
+        validation_data: Tuple[
+            List[npt.NDArray[np.double]], List[npt.NDArray[np.int_]]
+        ],
+        classes: str = "auto",
+        augmenter: Optional[AugmenterSignature] = None,
+        seed: Optional[int] = None,
+        epochs: Optional[int] = None,
+        steps_per_epoch: Optional[int] = None,
         workers=1,
     ):
         """Monkey patch the original StarDistData2D generator."""
@@ -484,7 +491,9 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         # have been "return"ed if this was a regular function
         yield tuple(result)
 
-    def predict_tyx(self, x):
+    def predict_tyx(
+        self, x: npt.NDArray[np.double]
+    ) -> Tuple[npt.NDArray[np.double], ...]:
         """Prepare input image of shape TYXC to YXC for internal representation."""
         if x.ndim == 3:
             x = np.expand_dims(x, axis=-1)

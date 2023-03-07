@@ -27,7 +27,8 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         grid: Tuple[int, ...] = (1, 1),
         n_classes: Optional[int] = None,
         backbone: str = "unet",
-        **kwargs: str,
+        train_patch_size: Tuple[int, ...] = (256, 256),
+        **kwargs: int,
     ) -> None:
         """Initialize with fixed length in time direction."""
         super().__init__(
@@ -44,6 +45,7 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         self.grid = _normalize_grid(grid, 2)
         self.backbone = str(backbone).lower()
         self.n_classes = None if n_classes is None else int(n_classes)
+        self.train_patch_size = train_patch_size
 
         # default config (can be overwritten by kwargs below)
         if self.backbone == "unet":
@@ -72,7 +74,6 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
 
         self.train_shape_completion = False
         self.train_completion_crop = 32
-        self.train_patch_size = 256, 256
         self.train_background_reg = 1e-4
         self.train_foreground_only = 0.9
         self.train_sample_cache = True
