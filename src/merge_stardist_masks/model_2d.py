@@ -2,24 +2,29 @@
 from __future__ import annotations
 
 import warnings
+from typing import Any
+from typing import Dict
+from typing import Generator
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import TypeVar
 from unittest.mock import patch
 
 import numpy as np
 import numpy.typing as npt
-import tensorflow as tf
-from csbdeep.internals.blocks import unet_block
-from csbdeep.internals.predict import tile_iterator
+import tensorflow as tf  # type: ignore [import]
+from csbdeep.data import Normalizer  # type: ignore [import]
+from csbdeep.internals.blocks import unet_block  # type: ignore [import]
+from csbdeep.internals.predict import tile_iterator  # type: ignore [import]
 from csbdeep.internals.predict import total_n_tiles
-from csbdeep.utils import _raise
+from csbdeep.utils import _raise  # type: ignore [import]
 from csbdeep.utils import axes_dict
-from csbdeep.utils.tf import CARETensorBoard
+from csbdeep.utils.tf import CARETensorBoard  # type: ignore [import]
 from csbdeep.utils.tf import IS_TF_1
 from csbdeep.utils.tf import keras_import
-from stardist.models import StarDist2D
-from stardist.models.base import kld
+from stardist.models import StarDist2D  # type: ignore [import]
+from stardist.models.base import kld  # type: ignore [import]
 from stardist.models.base import masked_loss_iou
 from stardist.models.base import masked_loss_mae
 from stardist.models.base import masked_loss_mse
@@ -28,8 +33,9 @@ from stardist.models.base import masked_metric_mae
 from stardist.models.base import masked_metric_mse
 from stardist.models.base import StarDistPadAndCropResizer
 from stardist.models.base import weighted_categorical_crossentropy
-from stardist.utils import _is_floatarray
-from tqdm import tqdm
+from stardist.utils import _is_floatarray  # type: ignore [import]
+from tensorflow.python.framework.ops import EagerTensor  # type: ignore [import]
+from tqdm import tqdm  # type: ignore [import]
 
 from .config_2d import StackedTimepointsConfig2D
 from .data_2d import OptimizedStackedTimepointsData2D
@@ -37,6 +43,7 @@ from .data_base import AugmenterSignature
 from .timeseries_helpers import timeseries_to_batch
 
 # from stardist.utils import _is_power_of_2
+T = TypeVar("T", bound=np.generic)
 
 
 K = keras_import("backend")
@@ -51,7 +58,7 @@ Model = keras_import("models", "Model")
 class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
     """Stardist model for stacked timepoints by overwriting the relevant functions."""
 
-    def _build(self):
+    def _build(self):  # type: ignore [no-untyped-def]
         """Has to be overwritten as the outputs slightly differ."""
         self.config.backbone == "unet" or _raise(NotImplementedError())
         unet_kwargs = {
@@ -125,7 +132,7 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         else:
             return Model([input_img], [output_prob, output_dist])
 
-    def prepare_for_training(self, optimizer=None):
+    def prepare_for_training(self, optimizer: Optional[Any] = None) -> None:
         """Method from base class needs to be overwritten for slightly adapted loss."""
         if optimizer is None:
             optimizer = Adam(self.config.train_learning_rate)
@@ -142,14 +149,18 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         ] + [1 for _ in range(self.config.len_t)]
         self.num_or_size_splits_pred = self.num_or_size_splits[: self.config.len_t]
 
-        def split_dist_maps(dist_true_mask, dist_pred):
+        def split_dist_maps(
+            dist_true_mask: EagerTensor, dist_pred: EagerTensor
+        ) -> Tuple[List[EagerTensor], List[EagerTensor]]:
             return tf.split(
                 dist_true_mask, num_or_size_splits=self.num_or_size_splits, axis=-1
             ), tf.split(
                 dist_pred, num_or_size_splits=self.num_or_size_splits_pred, axis=-1
             )
 
-        def dist_loss(dist_true_mask, dist_pred):
+        def dist_loss(
+            dist_true_mask: EagerTensor, dist_pred: EagerTensor
+        ) -> EagerTensor:
             true_splits, pred_splits = split_dist_maps(dist_true_mask, dist_pred)
             return K.mean(
                 tf.stack(
@@ -163,7 +174,9 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 )
             )
 
-        def dist_iou_metric(dist_true_mask, dist_pred):
+        def dist_iou_metric(
+            dist_true_mask: EagerTensor, dist_pred: EagerTensor
+        ) -> EagerTensor:
             true_splits, pred_splits = split_dist_maps(dist_true_mask, dist_pred)
             return K.mean(
                 tf.stack(
@@ -177,7 +190,9 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 )
             )
 
-        def relevant_mae(dist_true_mask, dist_pred):
+        def relevant_mae(
+            dist_true_mask: EagerTensor, dist_pred: EagerTensor
+        ) -> EagerTensor:
             true_splits, pred_splits = split_dist_maps(dist_true_mask, dist_pred)
             return K.mean(
                 tf.stack(
@@ -190,7 +205,9 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 )
             )
 
-        def relevant_mse(dist_true_mask, dist_pred):
+        def relevant_mse(
+            dist_true_mask: EagerTensor, dist_pred: EagerTensor
+        ) -> EagerTensor:
             true_splits, pred_splits = split_dist_maps(dist_true_mask, dist_pred)
             return K.mean(
                 tf.stack(
@@ -262,12 +279,12 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             List[npt.NDArray[np.double]], List[npt.NDArray[np.int_]]
         ],
         classes: str = "auto",
-        augmenter: Optional[AugmenterSignature] = None,
+        augmenter: Optional[AugmenterSignature[T]] = None,
         seed: Optional[int] = None,
         epochs: Optional[int] = None,
         steps_per_epoch: Optional[int] = None,
-        workers=1,
-    ):
+        workers: int = 1,
+    ) -> tf.keras.callbacks.History:
         """Monkey patch the original StarDistData2D generator."""
         with patch(
             "stardist.models.model2d.StarDistData2D", OptimizedStackedTimepointsData2D
@@ -284,12 +301,19 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 workers=workers,
             )
 
-    def _predict_setup(
-        self, img, axes, normalizer, n_tiles, show_tile_progress, predict_kwargs
+    def _predict_setup(  # type: ignore [no-untyped-def]
+        self,
+        img: npt.NDArray[np.double],
+        axes: Optional[str],
+        normalizer: Optional[Normalizer],
+        n_tiles: Optional[Tuple[int, ...]],
+        show_tile_progress: bool,
+        predict_kwargs: Dict[str, Any],
     ):
         """Modified version."""
         if n_tiles is None:
-            n_tiles = [1] * img.ndim
+            n_tiles = [1] * img.ndim  # type: ignore [assignment]
+        assert n_tiles is not None
         try:
             n_tiles = tuple(n_tiles)
             img.ndim == len(n_tiles) or _raise(TypeError())
@@ -332,11 +356,12 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 stacklevel=2,
             )
 
-        def predict_direct(x):
+        def predict_direct(x):  # type: ignore [no-untyped-def]
             ys = self.keras_model.predict(x[np.newaxis], **predict_kwargs)
             return tuple(y[0] for y in ys)
 
-        def tiling_setup():
+        def tiling_setup():  # type: ignore [no-untyped-def]
+            assert n_tiles is not None
             np.prod(n_tiles) > 1 or _raise(
                 ValueError("tiling setup for n_tiles = (1, 1, 1)")
             )
@@ -359,7 +384,9 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             sh = [s // grid_dict.get(a, 1) for a, s in zip(axes_net, x.shape)]
             sh[channel] = None
 
-            def create_empty_output(n_channel, dtype=np.float32):
+            def create_empty_output(  # type: ignore [no-untyped-def]
+                n_channel, dtype=np.float32
+            ):
                 sh[channel] = n_channel
                 return np.empty(sh, dtype)
 
@@ -408,15 +435,15 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             tiling_setup,
         )
 
-    def _predict_generator(
+    def _predict_generator(  # type: ignore [no-untyped-def]
         self,
-        img,
-        axes=None,
-        normalizer=None,
-        n_tiles=None,
-        show_tile_progress=True,
+        img: npt.NDArray[np.double],
+        axes: Optional[str] = None,
+        normalizer: Optional[Normalizer] = None,
+        n_tiles: Optional[Tuple[int, ...]] = None,
+        show_tile_progress: bool = True,
         **predict_kwargs,
-    ):
+    ) -> Generator[Optional[Tuple[npt.NDArray[np.double]]], None, None]:
         """Modified version of the version from StarDist2D."""
         (
             x,
@@ -435,6 +462,7 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             img, axes, normalizer, n_tiles, show_tile_progress, predict_kwargs
         )
 
+        assert n_tiles is not None
         if np.prod(n_tiles) > 1:
             tile_generator, output_shape, create_empty_output = tiling_setup()
 
@@ -443,9 +471,9 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             dist = create_empty_output(self.config.n_rays * self.config.len_t)
             if self._is_multiclass():
                 prob_class = create_empty_output(self.config.n_classes + 1)
-                result = (prob, dist, prob_class)
+                result_ = (prob, dist, prob_class)
             else:
-                result = (prob, dist)
+                result_ = (prob, dist)  # type: ignore [assignment]
 
             for tile, s_src, s_dst in tile_generator:
                 # predict_direct -> prob, dist, [prob_class if multi_class]
@@ -464,14 +492,14 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 s_dst[channel] = slice(None)
                 s_src, s_dst = tuple(s_src), tuple(s_dst)
                 # print(s_src,s_dst)
-                for part, part_tile in zip(result, result_tile):
+                for part, part_tile in zip(result_, result_tile):
                     part[s_dst] = part_tile[s_src]
-                yield  # yield None after each processed tile
+                yield None  # yield None after each processed tile
         else:
             # predict_direct -> prob, dist, [prob_class if multi_class]
-            result = predict_direct(x)
+            result_ = predict_direct(x)
 
-        result = [resizer.after(part, axes_net) for part in result]
+        result = [resizer.after(part, axes_net) for part in result_]
 
         # result = (prob, dist) for legacy or (prob, dist, prob_class) for multiclass
 
@@ -489,37 +517,50 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
 
         # last "yield" is the actual output that would
         # have been "return"ed if this was a regular function
-        yield tuple(result)
+        yield tuple(result)  # type: ignore [misc]
 
     def predict_tyx(
         self, x: npt.NDArray[np.double]
     ) -> Tuple[npt.NDArray[np.double], ...]:
         """Prepare input image of shape TYXC to YXC for internal representation."""
         if x.ndim == 3:
-            x = np.expand_dims(x, axis=-1)
-        x = np.concatenate([x[i] for i in range(self.config.len_t)], axis=-1)
+            x = np.expand_dims(x, axis=-1)  # type: ignore [no-untyped-call]
+        x = np.concatenate(  # type: ignore [no-untyped-call]
+            [x[i] for i in range(self.config.len_t)], axis=-1
+        )
         prob, dists = self.predict(x)
 
         prob = np.transpose(prob, (2, 0, 1))
 
-        dists = np.stack(np.split(dists, self.config.len_t, axis=-1), axis=0)
+        dists = np.stack(
+            np.split(  # type: ignore [no-untyped-call]
+                dists, self.config.len_t, axis=-1
+            ),
+            axis=0,
+        )
 
         return prob, dists
 
-    def predict_tyx_list(self, xs):
+    def predict_tyx_list(
+        self, xs: List[npt.NDArray[np.double]]
+    ) -> List[Tuple[npt.NDArray[np.double], ...]]:
         """Same as predict_tyx but for list of elements."""
         return [self.predict_tyx(x) for x in xs]
 
-    def predict_tyx_array(self, x_array):
+    def predict_tyx_array(
+        self, x_array: npt.NDArray[np.double]
+    ) -> List[Tuple[npt.NDArray[np.double], ...]]:
         """Predict on TYXC array."""
         if x_array.ndim == 3:
-            x_array = np.expand_dims(x_array, axis=-1)
+            x_array = np.expand_dims(x_array, axis=-1)  # type: ignore [no-untyped-call]
         return self.predict_tyx_list(timeseries_to_batch(x_array, self.config.len_t))
 
-    def _compute_receptive_field(self, img_size=None):
+    def _compute_receptive_field(
+        self, img_size: Optional[Tuple[int, ...]] = None
+    ) -> Tuple[Tuple[int, int], ...]:
         """Modified version of original StarDist models."""
         # TODO: good enough?
-        from scipy.ndimage import zoom
+        from scipy.ndimage import zoom  # type: ignore [import]
 
         if img_size is None:
             img_size = tuple(
@@ -527,7 +568,7 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             )
         if np.isscalar(img_size):
             img_size = (img_size,) * self.config.n_dim
-        img_size = tuple(img_size)
+        img_size = tuple(img_size)  # type: ignore [arg-type]
         # print(img_size)
         # assert all(_is_power_of_2(s) for s in img_size)
         mid = tuple(s // 2 for s in img_size)
@@ -545,9 +586,12 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         y = zoom(y, grid, order=0)
         y0 = zoom(y0, grid, order=0)
         ind = np.where(np.abs(y - y0) > 0)
-        return [(m - np.min(i), np.max(i) - m) for (m, i) in zip(mid, ind)]
+        return tuple(
+            (int(m - np.min(i)), int(np.max(i) - m))  # type: ignore [no-untyped-call]
+            for (m, i) in zip(mid, ind)
+        )
 
     @property
-    def _config_class(self):
+    def _config_class(self) -> type:
         """Needed method for the config class to use."""
         return StackedTimepointsConfig2D
