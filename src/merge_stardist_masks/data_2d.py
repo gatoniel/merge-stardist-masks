@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -15,19 +16,21 @@ from .timeseries_2d import edt_prob_timeseries
 from .timeseries_2d import star_dist_timeseries
 from .timeseries_2d import touching_pixels_2d_timeseries
 
+T = TypeVar("T", bound=np.generic)
+
 
 class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
     """Uses better weights and stacked timepoints."""
 
     def __init__(
         self,
-        xs: npt.ArrayLike,
-        ys: npt.ArrayLike,
+        xs: List[npt.NDArray[T]],
+        ys: List[npt.NDArray[T]],
         batch_size: int,
         n_rays: int,
         length: int,
         n_classes: Optional[int] = None,
-        classes: Optional[int] = None,
+        classes: Optional[npt.ArrayLike] = None,
         patch_size: Tuple[int, ...] = (256, 256),
         b: int = 32,
         grid: Tuple[int, ...] = (1, 1),
