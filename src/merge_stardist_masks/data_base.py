@@ -170,13 +170,13 @@ class StackedTimepointsDataBase(RollingSequence):  # type: ignore [misc]
         )
 
         self.sample_ind_cache = sample_ind_cache
-        self._ind_cache_fg: Dict[int, Tuple[npt.NDArray[np.int_], ...]] = {}
-        self._ind_cache_all: Dict[int, Tuple[npt.NDArray[np.int_], ...]] = {}
+        self._ind_cache_fg: Dict[int, Tuple[npt.NDArray[np.uint32], ...]] = {}
+        self._ind_cache_all: Dict[int, Tuple[npt.NDArray[np.uint32], ...]] = {}
         self.lock = threading.Lock()
 
     def get_valid_inds(
         self, k: int, foreground_prob: Optional[int] = None
-    ) -> Tuple[npt.NDArray[np.int_], ...]:
+    ) -> Tuple[npt.NDArray[np.uint32], ...]:
         """Find indices as centers that have labels around them."""
         if foreground_prob is None:
             foreground_prob = self.foreground_prob

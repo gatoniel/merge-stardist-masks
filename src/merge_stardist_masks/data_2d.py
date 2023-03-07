@@ -9,6 +9,7 @@ from typing import TypeVar
 import numpy as np
 import numpy.typing as npt
 
+from .data_base import AugmenterSignature
 from .data_base import StackedTimepointsDataBase
 from .sample_patches import sample_patches
 from .timeseries_2d import bordering_gaussian_weights_timeseries
@@ -30,17 +31,19 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         n_rays: int,
         length: int,
         n_classes: Optional[int] = None,
-        classes: Optional[npt.ArrayLike] = None,
+        classes: Optional[List[npt.NDArray[T]]] = None,
+        use_gpu: bool = False,
         patch_size: Tuple[int, ...] = (256, 256),
         b: int = 32,
         grid: Tuple[int, ...] = (1, 1),
         shape_completion: bool = False,
-        augmenter: Optional[bool] = None,
+        augmenter: Optional[AugmenterSignature[T]] = None,
         foreground_prob: int = 0,
-        **kwargs: int,
+        maxfilter_patch_size: Optional[int] = None,
+        sample_ind_cache: bool = True,
     ) -> None:
         """Initialize with arrays of shape (size, T, Y, X, channels)."""
-        super().__init__(  # type: ignore [no-untyped-call]
+        super().__init__(
             xs=xs,
             ys=ys,
             n_rays=n_rays,
@@ -52,7 +55,9 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
             length=length,
             augmenter=augmenter,
             foreground_prob=foreground_prob,
-            **kwargs,
+            maxfilter_patch_size=maxfilter_patch_size,
+            use_gpu=use_gpu,
+            sample_ind_cache=sample_ind_cache,
         )
 
         self.shape_completion = bool(shape_completion)
@@ -70,11 +75,10 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         idx = self.batch(i)
         arrays = [
             sample_patches(
-                (self.ys[k],)
-                + self.channels_as_tuple(self.xs[k]),  # type: ignore [no-untyped-call]
+                (self.ys[k],) + self.channels_as_tuple(self.xs[k]),
                 patch_size=self.patch_size,
                 n_samples=1,
-                valid_inds=self.get_valid_inds(k),  # type: ignore [no-untyped-call]
+                valid_inds=self.get_valid_inds(k),
             )
             for k in idx
         ]
@@ -94,11 +98,9 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         xs, ys = tuple(zip(*tuple(self.augmenter(_x, _y) for _x, _y in zip(xs, ys))))
 
         prob_ = np.stack([edt_prob_timeseries(lbl, self.b, self.ss_grid) for lbl in ys])
-        print(prob_.shape)
         touching = np.stack(
             [touching_pixels_2d_timeseries(lbl, self.b, self.ss_grid) for lbl in ys]
         )
-        print(touching.shape)
         touching_edt = np.stack(
             [
                 bordering_gaussian_weights_timeseries(
@@ -107,9 +109,8 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
                 for mask, lbl in zip(touching, ys)
             ]
         )
-        print(touching_edt.shape)
         prob = np.clip(prob_ - touching, 0, 1)
-        dist_mask = prob_ + touching_edt
+        dist_mask: npt.NDArray[np.double] = prob_ + touching_edt
 
         dists = np.stack(
             [
@@ -119,7 +120,6 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
                 for lbl in ys
             ]
         )
-        print(dists.shape)
 
         if xs[0].ndim == 3:
             xs = [

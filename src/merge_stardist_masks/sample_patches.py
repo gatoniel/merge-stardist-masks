@@ -16,7 +16,7 @@ def sample_patches(
     datas: tuple[npt.NDArray[T], ...],
     patch_size: tuple[int, ...],
     n_samples: int,
-    valid_inds: tuple[npt.NDArray[np.uint32]] | None = None,
+    valid_inds: tuple[npt.NDArray[np.uint32], ...] | None = None,
     verbose: bool = False,
 ) -> list[npt.NDArray[T]]:
     """Version of stardist.sample_patches.sample_patches for time stacks."""
@@ -35,7 +35,7 @@ def sample_patches(
         )
 
     if valid_inds is None:
-        valid_inds = tuple(  # type: ignore [assignment]
+        valid_inds = tuple(
             _s.ravel()
             for _s in np.meshgrid(  # type: ignore [no-untyped-call]
                 *tuple(
@@ -45,13 +45,13 @@ def sample_patches(
             )
         )
 
-    n_valid = len(valid_inds[0])  # type: ignore [index]
+    n_valid = len(valid_inds[0])
 
     if n_valid == 0:
         raise ValueError("no regions to sample from!")
 
     idx = choice(range(n_valid), n_samples, replace=(n_valid < n_samples))
-    rand_inds = [v[idx] for v in valid_inds]  # type: ignore [union-attr]
+    rand_inds = [v[idx] for v in valid_inds]
     res = [
         np.stack(
             [
