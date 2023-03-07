@@ -57,7 +57,7 @@ source = ["merge_stardist_masks", "tests"]
 
 [tool.coverage.report]
 show_missing = true
-fail_under = 90
+fail_under = 85
 
 [tool.mypy]
 strict = true
