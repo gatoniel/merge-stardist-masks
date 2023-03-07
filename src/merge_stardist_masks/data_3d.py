@@ -1,29 +1,29 @@
 """Stardist 3D data generator for new weights and probability maps."""
-from typing import List  # pragma: no cover
-from typing import Tuple  # pragma: no cover
-from typing import TypeVar  # pragma: no cover
+from typing import List
+from typing import Tuple
+from typing import TypeVar
 
-import numpy as np  # pragma: no cover
-import numpy.typing as npt  # pragma: no cover
-from scipy.ndimage import zoom  # type: ignore [import] # pragma: no cover
-from stardist.geometry import star_dist3D  # type: ignore [import] # pragma: no cover
-from stardist.models.model3d import (  # type: ignore [import] # pragma: no cover
+import numpy as np
+import numpy.typing as npt
+from scipy.ndimage import zoom  # type: ignore [import]
+from stardist.geometry import star_dist3D  # type: ignore [import]
+from stardist.models.model3d import (  # type: ignore [import]
     StarDistData3D,
 )
-from stardist.sample_patches import (  # type: ignore [import] # pragma: no cover
+from stardist.sample_patches import (  # type: ignore [import]
     sample_patches,
 )
-from stardist.utils import edt_prob  # type: ignore [import] # pragma: no cover
-from stardist.utils import mask_to_categorical  # pragma: no cover
+from stardist.utils import edt_prob  # type: ignore [import]
+from stardist.utils import mask_to_categorical
 
-from .touching_pixels import bordering_gaussian_weights  # pragma: no cover
-from .touching_pixels import touching_pixels_3d  # pragma: no cover
-
-
-T = TypeVar("T", bound=np.generic)  # pragma: no cover
+from .touching_pixels import bordering_gaussian_weights
+from .touching_pixels import touching_pixels_3d
 
 
-class OptimizedStarDistData3D(StarDistData3D):  # type: ignore [misc] # pragma: no cover
+T = TypeVar("T", bound=np.generic)
+
+
+class OptimizedStarDistData3D(StarDistData3D):  # type: ignore [misc]
     """Overwrite __getitem__ function to use different prob and weights."""
 
     def __getitem__(self, i: int) -> Tuple[List[npt.NDArray[T]], List[npt.NDArray[T]]]:
