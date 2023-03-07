@@ -1,7 +1,7 @@
 """Test the OptimizedStarDist3D extensively."""
 import numpy as np
 import pytest
-from stardist.models import Config3D
+from stardist.models import Config3D  # type: ignore [import]
 
 from .utils import circle_image
 from merge_stardist_masks.model_3d import OptimizedStarDist3D
@@ -53,7 +53,9 @@ def test_model_conf_train_predict(
         print(x.shape)
     for x in ys:
         print(x.shape)
-    model.train(xs, ys, validation_data=(xs[:2], ys[:2]))
+    model.train(  # type: ignore [no-untyped-call]
+        xs, ys, validation_data=(xs[:2], ys[:2])
+    )
 
     prob, dists = model.predict(xs[0])
 
