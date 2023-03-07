@@ -46,6 +46,9 @@ pyupgrade = "^3.3.0"
 furo = ">=2021.11.12"
 pytest-mock = "^3.10.0"
 
+[tool.poetry.group.dev.dependencies]
+tensorflow = "^2.11.0"
+
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
 tests = ["tests", "*/tests"]
