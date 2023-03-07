@@ -338,7 +338,7 @@ def test_naive_fusion_3d(
     new_dists = np.full((3, n_rays), dist)
     new_points: npt.NDArray[np.double] = (
         np.array([[z0, z0, z0], [z1, z1, z1], [z1 - 1, z1, z1]]) * g
-    )
+    ).astype(float)
 
     label = polyhedron_to_label(
         new_dists, new_points, rays, tuple(s * g for s in shape), verbose=False
@@ -417,7 +417,7 @@ def test_naive_fusion_2d(
     new_dists = np.full((3, n_rays), dist)
     new_points: npt.NDArray[np.double] = (
         np.array([[z0, z0], [z1, z1], [z1 - 1, z1]]) * g
-    )
+    ).astype(float)
 
     label = polygons_to_label(new_dists, new_points, tuple(s * g for s in shape))
     # set labels to correct ids
