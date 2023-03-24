@@ -37,10 +37,16 @@ def test_calc_midpoints() -> None:
 
     midpoints = tracking.calc_midpoints(lbl)
 
-    assert len(midpoints) == len(np.unique(lbl)) - 1
-    np.testing.assert_array_equal(midpoints[1], np.array((0.5, 0.5)))
-    np.testing.assert_array_equal(midpoints[2], np.array((0.5, 5.5)))
-    np.testing.assert_array_equal(midpoints[4], np.array((4.5, 6.5)))
+    assert len(midpoints) == len(np.unique(lbl)) - 1  # type: ignore [no-untyped-call]
+    np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
+        midpoints[1], np.array((0.5, 0.5))
+    )
+    np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
+        midpoints[2], np.array((0.5, 5.5))
+    )
+    np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
+        midpoints[4], np.array((4.5, 6.5))
+    )
 
 
 def test_calc_midpoint_distances() -> None:
@@ -62,13 +68,19 @@ def test_calc_midpoint_distances() -> None:
 
     for obj in objects:
         i = obj[2]
-        np.testing.assert_array_equal(-np.array(obj[1], dtype=float), distances[i])
-        np.testing.assert_array_equal(distances[i], -distances_rev[i])
+        np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
+            -np.array(obj[1], dtype=float), distances[i]
+        )
+        np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
+            distances[i], -distances_rev[i]
+        )
 
-    for i in np.unique(lbl1):
+    for i in np.unique(lbl1):  # type: ignore [no-untyped-call]
         if i == 0:
             continue
-        np.testing.assert_array_equal(distances_identity[i], np.zeros(2))
+        np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
+            distances_identity[i], np.zeros(2)
+        )
 
 
 def test_prepare_displacement_map_single() -> None:
@@ -83,7 +95,7 @@ def test_prepare_displacement_map_single() -> None:
         print(displacement_map[..., i])
 
     assert displacement_map.shape == lbl0.shape + (lbl0.ndim + 1,)
-    np.testing.assert_array_equal(
+    np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
         displacement_map_identity[..., :2],
         np.zeros_like(displacement_map_identity[..., :2]),
     )
@@ -93,12 +105,12 @@ def test_prepare_displacement_map_single() -> None:
         inds = lbl1 == i
         inds0 = lbl0 == i
         assert np.all(displacement_map[inds, -1] == 1.0)
-        np.testing.assert_array_equal(
+        np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
             displacement_map[inds, :-1].mean(axis=0),
             -np.array(obj[1], dtype=float),
         )
         assert np.all(displacement_map_rev[inds0, -1] == 1.0)
-        np.testing.assert_array_equal(
+        np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
             displacement_map_rev[inds0, :-1].mean(axis=0),
             np.array(obj[1], dtype=float),
         )
@@ -119,9 +131,9 @@ def test_prepare_displacement_maps() -> None:
     # lbl.ndim alone is enough as it is already +1 due to the time dimension
     assert displacement_maps.shape == (2,) + lbl0.shape + (lbl.ndim,)
 
-    np.testing.assert_array_equal(
+    np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
         displacement_maps[0, ...], tracking.prepare_displacement_map_single(lbl0, lbl1)
     )
-    np.testing.assert_array_equal(
+    np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
         displacement_maps[1, ...], tracking.prepare_displacement_map_single(lbl1, lbl0)
     )

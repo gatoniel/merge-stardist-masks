@@ -3,10 +3,10 @@ from typing import Dict
 
 import numpy as np
 import numpy.typing as npt
-from scipy import ndimage
+from scipy import ndimage  # type: ignore [import]
 
 
-def calc_midpoints(lbl: npt.NDArray[float]) -> Dict[int, npt.NDArray[float]]:
+def calc_midpoints(lbl: npt.NDArray[np.int_]) -> Dict[int, npt.NDArray[np.double]]:
     """Calculate center points of indidual objects in label map."""
     objects = ndimage.find_objects(lbl)
     midpoints = {}
@@ -24,11 +24,11 @@ def calc_midpoints(lbl: npt.NDArray[float]) -> Dict[int, npt.NDArray[float]]:
 
 
 def calc_midpoint_distances(
-    midpoints_t0: Dict[int, npt.NDArray[float]],
-    midpoints_t1: Dict[int, npt.NDArray[float]],
-) -> Dict[int, npt.NDArray[float]]:
+    midpoints_t0: Dict[int, npt.NDArray[np.double]],
+    midpoints_t1: Dict[int, npt.NDArray[np.double]],
+) -> Dict[int, npt.NDArray[np.double]]:
     """Calculate the vector pointing from midpoint_t1 to midpoint t0."""
-    distances = {}
+    distances: Dict[int, npt.NDArray[np.double]] = {}
     for id_t1, midpoint_t1 in midpoints_t1.items():
         try:
             distances[id_t1] = midpoints_t0[id_t1] - midpoint_t1
@@ -38,8 +38,8 @@ def calc_midpoint_distances(
 
 
 def prepare_displacement_map_single(
-    lbl_t0: npt.NDArray[int], lbl_t1: npt.NDArray[int]
-) -> npt.NDArray[float]:
+    lbl_t0: npt.NDArray[np.int_], lbl_t1: npt.NDArray[np.int_]
+) -> npt.NDArray[np.double]:
     """Calculate displacement map between individual timepoints."""
     midpoints_t0 = calc_midpoints(lbl_t0)
     midpoints_t1 = calc_midpoints(lbl_t1)
@@ -57,7 +57,7 @@ def prepare_displacement_map_single(
     return displacement_map
 
 
-def prepare_displacement_maps(lbl: npt.NDArray[int]) -> npt.NDArray[float]:
+def prepare_displacement_maps(lbl: npt.NDArray[np.int_]) -> npt.NDArray[np.double]:
     """Calculate all displacement maps over several timepoints.
 
     lbl: Array of shape (T, Y, X) or (T, Z, Y, X)
