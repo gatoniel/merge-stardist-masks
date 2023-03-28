@@ -8,6 +8,7 @@ objects = [
     (((0, 2), (5, 7)), (1, -1), 20),
     (((4, 6), (6, 8)), (-1, -2), 44),
 ]
+all_obj_ids = []
 
 lbl0 = np.zeros((10, 10), dtype=int)
 lbl1 = np.zeros_like(lbl0)
@@ -20,12 +21,15 @@ for obj in objects:
     slx1 = slice(*tuple(np.array(obj[0][1]) + obj[1][1]))
 
     i = obj[2]
+    all_obj_ids.append(i)
 
     lbl0[sly0, slx0] = i
     lbl1[sly1, slx1] = i
 
 max_id = 45
 lbl1[-2:, -2:] = max_id
+
+all_obj_ids.append(45)
 
 
 def test_calc_midpoints() -> None:
@@ -137,3 +141,64 @@ def test_prepare_displacement_maps() -> None:
     np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
         displacement_maps[1, ...], tracking.prepare_displacement_map_single(lbl1, lbl0)
     )
+
+
+def test_dict_to_array_indices() -> None:
+    """Test the dict_to_array_indices function by preparing dictionary from arrays."""
+    length = 10
+    rng = np.random.default_rng()
+    array = rng.standard_normal((length, 3))
+    inds = rng.permutation(length)
+
+    d = {ind: array[i, :] for i, ind in enumerate(inds)}
+
+    array_, inds_ = tracking.dict_to_array_indices(d)
+
+    np.testing.assert_array_equal(array, array_)  # type: ignore [no-untyped-call]
+    np.testing.assert_array_equal(inds, inds_)  # type: ignore [no-untyped-call]
+
+
+def test_get_tracked_ids() -> None:
+    """Test whether finding tracked label ids works based on thresholds."""
+    dummy_displacement_map = np.zeros(lbl1.shape + (3,), dtype=float)
+    for i, lbl_id in enumerate(all_obj_ids):
+        if i == 0:
+            val_ = 0.3
+        else:
+            val_ = 1.0
+        inds = lbl1 == lbl_id
+        dummy_displacement_map[inds, -1] = val_
+        dummy_displacement_map[inds, :2] = lbl_id
+
+    tracked_ids = tracking.get_tracked_ids(lbl1, dummy_displacement_map, threshold=0.5)
+
+    # first object had too low value and should be cut off by threshold
+    assert all_obj_ids[0] not in tracked_ids
+
+    for key, val in tracked_ids.items():
+        assert len(val) == 2
+        assert key == int(val.mean())
+
+
+def test_track_from_displacement_map_single_timepoint() -> None:
+    """Test whether tracking single timepoint works properly."""
+    for lbl0_, lbl1_ in [(lbl0, lbl1), (lbl1, lbl0), (lbl1, lbl1)]:
+        displacement_map = tracking.prepare_displacement_map_single(lbl0_, lbl1_)
+
+        tracked_lbl1 = tracking.track_from_displacement_map_single_timepoint(
+            lbl0_, lbl1_, displacement_map
+        )
+
+        np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
+            lbl1_, tracked_lbl1
+        )
+
+
+def test_track_from_displacement_map() -> None:
+    """Test tracking through multiple timepoints."""
+    lbl = np.stack([lbl0, lbl1, lbl0], axis=0)
+    displacement_maps = tracking.prepare_displacement_maps(lbl)
+
+    tracked_lbl = tracking.track_from_displacement_map(lbl, displacement_maps)
+
+    np.testing.assert_array_equal(lbl, tracked_lbl)  # type: ignore [no-untyped-call]
