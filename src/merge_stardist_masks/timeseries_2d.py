@@ -10,6 +10,7 @@ from stardist.utils import edt_prob  # type: ignore [import]
 
 from .touching_pixels import bordering_gaussian_weights
 from .touching_pixels import touching_pixels_2d
+from .tracking import prepare_displacement_map_single
 
 
 def star_dist_timeseries(
@@ -73,3 +74,20 @@ def edt_prob_timeseries(
     return np.stack(
         [edt_prob(subsample(lbl, i, b, ss_grid)) for i in range(lbl.shape[0])], axis=-1
     )
+
+
+def prepare_displacement_maps_timeseries(
+    lbl: npt.NDArray[np.int_], b: Tuple[slice, ...], ss_grid: Tuple[slice, ...]
+) -> Tuple[npt.NDArray[np.double], npt.NDArray[np.double]]:
+    """Calculate displacement map for each timepoint individually and stack."""
+    maps = [
+        prepare_displacement_map_single(
+            subsample(lbl, i, b, ss_grid), subsample(lbl, i + 1, b, ss_grid)
+        )
+        for i in range(lbl.shape[0] - 1)
+    ]
+    displacement = np.concatenate(  # type: ignore [no-untyped-call]
+        [map_[..., :2] for map_ in maps], axis=-1
+    )
+    tracked = np.stack([map_[..., -1] for map_ in maps], axis=-1)
+    return displacement, tracked

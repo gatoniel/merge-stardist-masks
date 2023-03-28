@@ -39,6 +39,7 @@ from tqdm import tqdm  # type: ignore [import]
 
 from .config_2d import StackedTimepointsConfig2D
 from .data_2d import OptimizedStackedTimepointsData2D
+from .data_2d import SimplifiedTrackingData2D
 from .data_base import AugmenterSignature
 from .timeseries_helpers import timeseries_to_batch
 
@@ -129,6 +130,25 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 activation="softmax",
             )(unet_class)
             return Model([input_img], [output_prob, output_dist, output_prob_class])
+        elif self.config.tracking:
+            output_displacement = Conv2D(
+                (self.config.len_t - 1) * 2,
+                (1, 1),
+                name="displacement",
+                padding="same",
+                activation="linear",
+            )(unet)
+            output_tracked = Conv2D(
+                self.config.len_t - 1,
+                (1, 1),
+                name="tracked",
+                padding="same",
+                activation="linear",
+            )(unet)
+            return Model(
+                [input_img],
+                [output_prob, output_dist, output_displacement, output_tracked],
+            )
         else:
             return Model([input_img], [output_prob, output_dist])
 
@@ -225,9 +245,15 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 self.config.train_class_weights, ndim=self.config.n_dim
             )
             loss = [prob_loss, dist_loss, prob_class_loss]
+        elif self.config.tracking:
+            print("hi")
+            displacement_loss = "mean_squared_error"
+            tracked_loss = "binary_crossentropy"
+            loss = [prob_loss, dist_loss, displacement_loss, tracked_loss]
         else:
             loss = [prob_loss, dist_loss]
 
+        print(loss)
         self.keras_model.compile(
             optimizer,
             loss=loss,
@@ -286,20 +312,37 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         workers: int = 1,
     ) -> tf.keras.callbacks.History:
         """Monkey patch the original StarDistData2D generator."""
-        with patch(
-            "stardist.models.model2d.StarDistData2D", OptimizedStackedTimepointsData2D
-        ):
-            return super().train(
-                X=x,
-                Y=y,
-                validation_data=validation_data,
-                classes=classes,
-                augmenter=augmenter,
-                seed=seed,
-                epochs=epochs,
-                steps_per_epoch=steps_per_epoch,
-                workers=workers,
-            )
+        if self.config.tracking:
+            with patch(
+                "stardist.models.model2d.StarDistData2D", SimplifiedTrackingData2D
+            ):
+                return super().train(
+                    X=x,
+                    Y=y,
+                    validation_data=validation_data,
+                    classes=classes,
+                    augmenter=augmenter,
+                    seed=seed,
+                    epochs=epochs,
+                    steps_per_epoch=steps_per_epoch,
+                    workers=workers,
+                )
+        else:
+            with patch(
+                "stardist.models.model2d.StarDistData2D",
+                OptimizedStackedTimepointsData2D,
+            ):
+                return super().train(
+                    X=x,
+                    Y=y,
+                    validation_data=validation_data,
+                    classes=classes,
+                    augmenter=augmenter,
+                    seed=seed,
+                    epochs=epochs,
+                    steps_per_epoch=steps_per_epoch,
+                    workers=workers,
+                )
 
     def _predict_setup(  # type: ignore [no-untyped-def]
         self,
@@ -472,6 +515,15 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             if self._is_multiclass():
                 prob_class = create_empty_output(self.config.n_classes + 1)
                 result_ = (prob, dist, prob_class)
+            elif self.config.tracking:
+                displacement = create_empty_output((self.config.len_t - 1) * 2)
+                tracked = create_empty_output(self.config.len_t - 1)
+                result_ = (  # type: ignore [assignment]
+                    prob,
+                    dist,
+                    displacement,
+                    tracked,
+                )
             else:
                 result_ = (prob, dist)  # type: ignore [assignment]
 
@@ -514,6 +566,9 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         if self._is_multiclass():
             # prob_class
             result[2] = np.moveaxis(result[2], channel, -1)
+        elif self.config.tracking:
+            result[2] = np.moveaxis(result[2], channel, -1)
+            result[3] = np.moveaxis(result[3], channel, -1)
 
         # last "yield" is the actual output that would
         # have been "return"ed if this was a regular function
@@ -528,7 +583,25 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         x = np.concatenate(  # type: ignore [no-untyped-call]
             [x[i] for i in range(self.config.len_t)], axis=-1
         )
-        prob, dists = self.predict(x)
+        if self.config.tracking:
+            prob, dists, displacement, tracked = self.predict(x)
+            displacements = np.split(  # type: ignore [no-untyped-call]
+                displacement, self.config.len_t - 1, axis=-1
+            )
+            trackeds = np.split(  # type: ignore [no-untyped-call]
+                tracked, self.config.len_t - 1, axis=-1
+            )
+            displacement_map = np.stack(
+                [
+                    np.concatenate(  # type: ignore [no-untyped-call]
+                        [disp, track], axis=-1
+                    )
+                    for disp, track in zip(displacements, trackeds)
+                ],
+                axis=0,
+            )
+        else:
+            prob, dists = self.predict(x)
 
         prob = np.transpose(prob, (2, 0, 1))
 
@@ -539,7 +612,10 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             axis=0,
         )
 
-        return prob, dists
+        if self.config.tracking:
+            return prob, dists, displacement_map
+        else:
+            return prob, dists
 
     def predict_tyx_list(
         self, xs: List[npt.NDArray[np.double]]
