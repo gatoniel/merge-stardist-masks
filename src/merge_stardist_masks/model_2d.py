@@ -514,18 +514,18 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             dist = create_empty_output(self.config.n_rays * self.config.len_t)
             if self._is_multiclass():
                 prob_class = create_empty_output(self.config.n_classes + 1)
-                result_ = (prob, dist, prob_class)
+                result_: Tuple[npt.NDArray[np.double], ...] = (prob, dist, prob_class)
             elif self.config.tracking:
                 displacement = create_empty_output((self.config.len_t - 1) * 2)
                 tracked = create_empty_output(self.config.len_t - 1)
-                result_ = (  # type: ignore [assignment]
+                result_ = (
                     prob,
                     dist,
                     displacement,
                     tracked,
                 )
             else:
-                result_ = (prob, dist)  # type: ignore [assignment]
+                result_ = (prob, dist)
 
             for tile, s_src, s_dst in tile_generator:
                 # predict_direct -> prob, dist, [prob_class if multi_class]

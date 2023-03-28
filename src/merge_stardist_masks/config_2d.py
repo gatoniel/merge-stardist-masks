@@ -83,11 +83,11 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         self.train_dist_loss = "mae"
         if self.n_classes is None:
             if self.tracking:
-                self.train_loss_weights = (1, 0.2, 1, 1)
+                self.train_loss_weights: Tuple[float, ...] = (1.0, 0.2, 1.0, 1.0)
             else:
-                self.train_loss_weights = (1, 0.2)  # type: ignore [assignment]
+                self.train_loss_weights = (1, 0.2)
         else:
-            self.train_loss_weights = (1, 0.2, 1)  # type: ignore [assignment]
+            self.train_loss_weights = (1, 0.2, 1)
 
         self.train_class_weights = (
             (1, 1) if self.n_classes is None else (1,) * (self.n_classes + 1)
