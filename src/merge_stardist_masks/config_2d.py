@@ -24,6 +24,7 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         n_rays: int = 32,
         len_t: int = 3,
         tracking: bool = False,
+        predict_all_timepoints: bool = False,
         n_channel_in: int = 1,
         grid: Tuple[int, ...] = (1, 1),
         n_classes: Optional[int] = None,
@@ -43,6 +44,7 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         # directly set by parameters
         self.tracking = tracking
         self.len_t = len_t
+        self.predict_all_timepoints = predict_all_timepoints
         self.n_rays = int(n_rays)
         self.grid = _normalize_grid(grid, 2)
         self.backbone = str(backbone).lower()
@@ -109,7 +111,7 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         self.use_gpu = False
 
         # remove derived attributes that shouldn't be overwritten
-        for k in ("n_dim", "n_channel_out"):
+        for k in ("n_dim", "n_channel_out", "output_len_t"):
             try:
                 del kwargs[k]
             except KeyError:
@@ -129,3 +131,8 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         # tensorboard does not work with tracking.
         if self.tracking:
             self.train_tensorboard = False
+
+        if self.predict_all_timepoints:
+            self.output_len_t = self.len_t
+        else:
+            self.output_len_t = 2

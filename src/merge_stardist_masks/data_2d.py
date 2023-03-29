@@ -106,6 +106,8 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         ys: List[npt.NDArray[np.int_]],
     ) -> Tuple[List[npt.NDArray[np.double]], List[npt.NDArray[np.double]]]:
         """These routines are needed several times so they become their own function."""
+        y_len_t = ys[0].shape[0]
+
         prob_ = np.stack([edt_prob_timeseries(lbl, self.b, self.ss_grid) for lbl in ys])
         touching = np.stack(
             [touching_pixels_2d_timeseries(lbl, self.b, self.ss_grid) for lbl in ys]
@@ -147,15 +149,15 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         # dist_and_mask = np.concatenate([dist,dist_mask],axis=-1)
         # faster than concatenate
         dist_and_mask = np.empty(
-            dists.shape[:-1] + (self.len_t * (self.n_rays + 1),), np.float32
+            dists.shape[:-1] + (y_len_t * (self.n_rays + 1),), np.float32
         )
-        dist_and_mask[..., : -self.len_t] = dists
-        dist_and_mask[..., -self.len_t :] = dist_mask
+        dist_and_mask[..., :-y_len_t] = dists
+        dist_and_mask[..., -y_len_t:] = dist_mask
 
         return [newxs], [prob, dist_and_mask]
 
 
-class SimplifiedTrackingData2D(OptimizedStackedTimepointsData2D):
+class StackedTimepointsSimplifiedTrackingData2D(OptimizedStackedTimepointsData2D):
     """Adds tracking preprocessing to StarDist."""
 
     def __getitem__(
@@ -202,6 +204,58 @@ class SimplifiedTrackingData2D(OptimizedStackedTimepointsData2D):
             [maps_tracked[1] for maps_tracked in displacement_maps_tracked]
         )
 
-        print(displacement_maps.shape)
-        print(tracked_maps.shape)
+        return new_xs, [prob, dist_and_mask, displacement_maps, tracked_maps]
+
+
+class SimplifiedTrackingData2D(OptimizedStackedTimepointsData2D):
+    """Adds tracking preprocessing to StarDist."""
+
+    def __getitem__(
+        self, i: int
+    ) -> Tuple[List[npt.NDArray[np.double]], List[npt.NDArray[np.double]]]:
+        """Return batch i as numpy array."""
+        idx = self.batch(i)
+        arrays = [
+            sample_patches(
+                (self.ys[k],) + self.channels_as_tuple(self.xs[k]),
+                patch_size=self.patch_size,
+                n_samples=1,
+                valid_inds=self.get_valid_inds(k),
+            )
+            for k in idx
+        ]
+
+        if self.n_channel is None:
+            xs, ys = list(zip(*[(x[0][self.b], y[0]) for y, x in arrays]))
+        else:
+            xs, ys = list(
+                zip(
+                    *[
+                        (np.stack([_x[0] for _x in x], axis=-1)[self.b], y[0])
+                        for y, *x in arrays
+                    ]
+                )
+            )
+
+        xs, ys = tuple(zip(*tuple(self.augmenter(_x, _y) for _x, _y in zip(xs, ys))))
+
+        # Only use center y and its successor
+        time_slice = slice(self.mid_t, self.mid_t + 2)
+        ys = [y[time_slice, ...] for y in ys]
+
+        new_xs, prob_dist_mask = self.preprocess_distances(xs, ys)
+        prob = prob_dist_mask[0]
+        dist_and_mask = prob_dist_mask[1]
+
+        displacement_maps_tracked = [
+            prepare_displacement_maps_timeseries(lbl, b=self.b, ss_grid=self.ss_grid)
+            for lbl in ys
+        ]
+        displacement_maps = np.stack(
+            [maps_tracked[0] for maps_tracked in displacement_maps_tracked]
+        )
+        tracked_maps = np.stack(
+            [maps_tracked[1] for maps_tracked in displacement_maps_tracked]
+        )
+
         return new_xs, [prob, dist_and_mask, displacement_maps, tracked_maps]
