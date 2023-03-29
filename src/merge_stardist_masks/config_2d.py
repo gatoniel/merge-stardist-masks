@@ -23,12 +23,12 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         axes: str = "YX",
         n_rays: int = 32,
         len_t: int = 3,
+        tracking: bool = False,
         n_channel_in: int = 1,
         grid: Tuple[int, ...] = (1, 1),
         n_classes: Optional[int] = None,
         backbone: str = "unet",
         train_patch_size: Tuple[int, ...] = (256, 256),
-        tracking: bool = False,
         **kwargs: int,
     ) -> None:
         """Initialize with fixed length in time direction."""

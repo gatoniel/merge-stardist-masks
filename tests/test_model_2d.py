@@ -105,3 +105,12 @@ def test_model_conf_train_predict_tracking(
     assert prob.shape == (len_t, shapexy // grid, shapexy // grid)
     assert dists.shape == (len_t, shapexy // grid, shapexy // grid, n_rays)
     assert displacements.shape == (len_t - 1, shapexy // grid, shapexy // grid, 3)
+
+    # train to reload model
+    model2 = OptimizedStackedTimepointsModel2D(None, name="test", basedir=str(tmpdir))
+
+    prob, dists, displacements = model2.predict_tyx(xs[0])
+
+    assert prob.shape == (len_t, shapexy // grid, shapexy // grid)
+    assert dists.shape == (len_t, shapexy // grid, shapexy // grid, n_rays)
+    assert displacements.shape == (len_t - 1, shapexy // grid, shapexy // grid, 3)
