@@ -132,7 +132,7 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         if self.tracking:
             self.train_tensorboard = False
 
-        if self.predict_all_timepoints:
-            self.output_len_t = self.len_t
-        else:
+        if not self.predict_all_timepoints and self.tracking:
             self.output_len_t = 2
+        else:
+            self.output_len_t = self.len_t
