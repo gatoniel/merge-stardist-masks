@@ -38,6 +38,7 @@ def test_calc_midpoints() -> None:
     lbl = np.zeros((10, 10), dtype=int)
     lbl[:2, :2] = 1
     lbl[:2, 5:7] = 2
+    lbl[4:8, 4:8] = 5
     lbl[4:6, 6:8] = 4
 
     midpoints = tracking.calc_midpoints(lbl)
@@ -51,6 +52,12 @@ def test_calc_midpoints() -> None:
     )
     np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
         midpoints[4], np.array((4.5, 6.5))
+    )
+
+    midpoint5 = np.mean(np.argwhere(lbl == 5), axis=0)
+
+    np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
+        midpoints[5], midpoint5
     )
 
 
