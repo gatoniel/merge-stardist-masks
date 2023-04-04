@@ -4,6 +4,7 @@ from __future__ import annotations
 import warnings
 from functools import partial
 from typing import Callable
+from typing import Dict
 from typing import Optional
 from typing import Tuple
 from typing import TypeVar
@@ -11,7 +12,7 @@ from typing import Union
 
 import numpy as np
 import numpy.typing as npt
-from scipy.ndimage import binary_dilation
+from scipy.ndimage import binary_dilation  # type: ignore [import]
 from scipy.ndimage import generate_binary_structure
 from stardist.geometry.geom2d import polygons_to_label  # type: ignore [import]
 from stardist.geometry.geom3d import polyhedron_to_label  # type: ignore [import]
@@ -255,7 +256,17 @@ def naive_fusion(
     respect_probs: bool = False,
     debug: bool = False,
     extend_prob_overwriting: bool = False,
-) -> Union[npt.NDArray[np.uint16], npt.NDArray[np.intc]]:
+) -> Union[
+    npt.NDArray[np.uint16],
+    npt.NDArray[np.intc],
+    Tuple[
+        Union[npt.NDArray[np.uint16], npt.NDArray[np.intc]],
+        npt.NDArray[np.uint16],
+        npt.NDArray[np.uint16],
+        Dict[int, str],
+        Dict[int, npt.NDArray[np.uint16]],
+    ],
+]:
     """Merge overlapping masks given by dists, probs, rays.
 
     Performs a naive iterative scheme to merge the masks that a StarDist network has
@@ -366,7 +377,17 @@ def naive_fusion_isotropic_grid(
     respect_probs: bool = False,
     debug: bool = False,
     extend_prob_overwriting: bool = False,
-) -> Union[npt.NDArray[np.uint16], npt.NDArray[np.intc]]:
+) -> Union[
+    npt.NDArray[np.uint16],
+    npt.NDArray[np.intc],
+    Tuple[
+        Union[npt.NDArray[np.uint16], npt.NDArray[np.intc]],
+        npt.NDArray[np.uint16],
+        npt.NDArray[np.uint16],
+        Dict[int, str],
+        Dict[int, npt.NDArray[np.uint16]],
+    ],
+]:
     """Merge overlapping masks given by dists, probs, rays.
 
     Performs a naive iterative scheme to merge the masks that a StarDist network has
@@ -612,8 +633,11 @@ def naive_fusion_isotropic_grid(
                 empty_ = np.zeros_like(big_ordered_shape)
 
                 counter_list = shape_counter_list[::-1]
-                assert np.max(big_new_shape_int) == len(counter_list)
-                for i, lbl_id in enumerate(range(1, np.max(big_new_shape_int) + 1)):
+                max_new_shape_int = np.max(  # type: ignore [no-untyped-call]
+                    big_new_shape_int
+                )
+                assert max_new_shape_int == len(counter_list)
+                for i, lbl_id in enumerate(range(1, max_new_shape_int + 1)):
                     big_ordered_shape[big_new_shape_int == lbl_id] = counter_list[i]
                     empty_[big_new_shape_int == lbl_id] = counter_list[i]
 

@@ -52,7 +52,7 @@ def prepare_displacement_map_single(
     displacement_map = np.zeros((lbl_t0.shape) + (ndim + 1,), dtype=float)
     coordinates_t1 = mesh_from_shape(lbl_t0.shape)
 
-    for id_t1 in np.unique(lbl_t1):
+    for id_t1 in np.unique(lbl_t1):  # type: ignore [no-untyped-call]
         if id_t1 == 0:
             continue
         try:
@@ -88,7 +88,7 @@ def track_from_displacement_map_single_timepoint(
     lbl_t0: npt.NDArray[np.int_],
     lbl_t1: npt.NDArray[np.int_],
     displacement_map: npt.NDArray[np.double],
-    points: npt.NDArray[np.double],
+    points: npt.NDArray[np.int_],
     threshold: float = 0.5,
 ) -> npt.NDArray[np.int_]:
     """Track labels from one timepoint to next timepoint based on displacement map."""
@@ -135,7 +135,7 @@ def dict_to_array_indices(
 def get_tracked_ids(
     lbl: npt.NDArray[np.int_],
     displacement_map: npt.NDArray[np.double],
-    points: npt.NDArray[np.double],
+    points: npt.NDArray[np.int_],
     threshold: float = 0.5,
 ) -> Dict[int, npt.NDArray[np.double]]:
     """Get label ids whose objects were tracked from the previous timepoint."""
