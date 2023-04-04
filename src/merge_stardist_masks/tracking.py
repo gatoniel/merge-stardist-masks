@@ -202,7 +202,7 @@ def track_array_from_tracking_list(
 def bw_dict_to_fw_dict(bw_dict: Dict[int, int]) -> Dict[int, List[int]]:
     """Invert a backward pointing tracking dict into a forward pointing one."""
     fw_dict = {}
-    for key, val in bw_dict:
+    for key, val in bw_dict.items():
         if val not in fw_dict:
             fw_dict[val] = [key]
         else:
