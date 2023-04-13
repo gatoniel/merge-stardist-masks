@@ -567,9 +567,10 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         # prob
         # result[0] = np.take(result[0], 0, axis=channel)
         # dist
-        result[1] = np.maximum(
-            1e-3, result[1]
-        )  # avoid small dist values to prevent problems with Qhull
+        if not self.config.segmentation_by_vectors:
+            result[1] = np.maximum(
+                1e-3, result[1]
+            )  # avoid small dist values to prevent problems with Qhull
         result[1] = np.moveaxis(result[1], channel, -1)
 
         if self._is_multiclass():
