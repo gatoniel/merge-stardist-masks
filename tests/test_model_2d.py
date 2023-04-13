@@ -176,3 +176,67 @@ def test_model_conf_train_predict_tracking_all_timepoints_prediction(
     assert prob.shape == (len_t, shapexy // grid, shapexy // grid)
     assert dists.shape == (len_t, shapexy // grid, shapexy // grid, n_rays)
     assert displacements.shape == (len_t - 1, shapexy // grid, shapexy // grid, 3)
+
+
+@pytest.mark.parametrize("n_channel, len_t", [(1, 3), (2, 4), (1, 5)])
+def test_model_conf_train_predict_segmentation_by_vectors(
+    tmpdir: str, n_channel: int, len_t: int
+) -> None:
+    """Verify correct shapes for various inputs."""
+    grid = 1
+    n_rays = 2
+
+    shapexy = 160
+    img = circle_image(shape=(shapexy, shapexy), len_t=len_t)
+
+    if n_channel > 1:
+        img = np.repeat(img[..., np.newaxis], n_channel, axis=-1)
+
+    imgs = [
+        np.copy(img),  # type: ignore [no-untyped-call]
+        np.copy(img),  # type: ignore [no-untyped-call]
+        img,
+    ]
+
+    xs = [img + 0.6 * np.random.uniform(0, 1, img.shape) for img in imgs]
+    if n_channel > 1:
+        ys = [img[..., 0] for img in imgs]
+    else:
+        ys = imgs
+
+    patch_shape = (128, 128)
+
+    conf = StackedTimepointsConfig2D(
+        n_rays=n_rays,
+        segmentation_by_vectors=True,
+        grid=(grid,) * 2,
+        len_t=img.shape[0],
+        use_gpu=False,
+        n_channel_in=n_channel,
+        train_epochs=2,
+        train_patch_size=patch_shape,
+        train_steps_per_epoch=1,
+        tracking=True,
+    )
+
+    assert conf.output_len_t == 1
+    assert conf.n_rays == 2
+
+    model = OptimizedStackedTimepointsModel2D(conf, name="test", basedir=str(tmpdir))
+
+    model.train(xs, ys, validation_data=(xs[:2], ys[:2]))
+
+    prob, dists, displacements = model.predict_tyx(xs[0])
+
+    assert prob.shape == (1, shapexy // grid, shapexy // grid)
+    assert dists.shape == (1, shapexy // grid, shapexy // grid, 2)
+    assert displacements.shape == (1, shapexy // grid, shapexy // grid, 3)
+
+    # train to reload model
+    model2 = OptimizedStackedTimepointsModel2D(None, name="test", basedir=str(tmpdir))
+
+    prob, dists, displacements = model2.predict_tyx(xs[0])
+
+    assert prob.shape == (1, shapexy // grid, shapexy // grid)
+    assert dists.shape == (1, shapexy // grid, shapexy // grid, 2)
+    assert displacements.shape == (1, shapexy // grid, shapexy // grid, 3)

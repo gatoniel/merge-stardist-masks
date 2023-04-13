@@ -25,6 +25,7 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         len_t: int = 3,
         tracking: bool = False,
         predict_all_timepoints: bool = False,
+        segmentation_by_vectors: bool = False,
         n_channel_in: int = 1,
         grid: Tuple[int, ...] = (1, 1),
         n_classes: Optional[int] = None,
@@ -45,6 +46,7 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         self.tracking = tracking
         self.len_t = len_t
         self.predict_all_timepoints = predict_all_timepoints
+        self.segmentation_by_vectors = segmentation_by_vectors
         self.n_rays = int(n_rays)
         self.grid = _normalize_grid(grid, 2)
         self.backbone = str(backbone).lower()
@@ -128,11 +130,16 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
                 "if n_classes is not None, otherwise 2"
             )
 
-        # tensorboard does not work with tracking.
-        if self.tracking:
-            self.train_tensorboard = False
-
         if not self.predict_all_timepoints and self.tracking:
             self.output_len_t = 2
         else:
             self.output_len_t = self.len_t
+
+        if self.segmentation_by_vectors:
+            self.output_len_t = 1
+            self.n_rays = 2
+            self.tracking = True
+
+        # tensorboard does not work with tracking.
+        if self.tracking:
+            self.train_tensorboard = False

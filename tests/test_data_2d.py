@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 
 from merge_stardist_masks.data_2d import OptimizedStackedTimepointsData2D
+from merge_stardist_masks.data_2d import SegmentationByDisplacementVectors
 
 
 @pytest.mark.parametrize(
@@ -69,3 +70,47 @@ def test_getitem(
         np.testing.assert_equal(  # type: ignore [no-untyped-call]
             dists[..., mask_start + i], dists[..., mask_start + i + 1]
         )
+
+
+@pytest.mark.parametrize(
+    "n_channel, len_t, grid, batch_size, patch_size",
+    [
+        (1, 3, 1, 2, 8),
+        (1, 3, 2, 2, 16),
+        (2, 5, 2, 1, 10),
+        (1, 4, 2, 2, 8),
+    ],
+)
+def test_getitem_segmentation_by_vectors(
+    n_channel: int, len_t: int, grid: int, batch_size: int, patch_size: int
+) -> None:
+    """Verify correctly sized output shapes of __getitem__."""
+    n_rays = 10
+    shapexy = 16
+    shape = (len_t, shapexy, shapexy, n_channel)
+    x = np.random.random((1,) + shape[1:]).repeat(len_t, axis=0)
+    x = np.squeeze(x)
+
+    print(x.shape)
+    y = np.zeros(shape[:-1], dtype=np.uint8)
+    y[:, 4:8, 4:8] = 1
+
+    dg = SegmentationByDisplacementVectors(
+        [x],
+        [y],
+        batch_size,
+        n_rays,
+        10,
+        patch_size=(patch_size, patch_size),
+        grid=(grid,) * 2,
+    )
+
+    [new_x], [probs, descr, displ_maps, displ_tracked] = dg[0]
+
+    outshapexy = patch_size // grid
+
+    assert new_x.shape == (batch_size, patch_size, patch_size, len_t * n_channel)
+    assert probs.shape == (batch_size, outshapexy, outshapexy, 1)
+    assert descr.shape == (batch_size, outshapexy, outshapexy, 3)
+    assert displ_maps.shape == (batch_size, outshapexy, outshapexy, 2)
+    assert displ_tracked.shape == (batch_size, outshapexy, outshapexy, 1)

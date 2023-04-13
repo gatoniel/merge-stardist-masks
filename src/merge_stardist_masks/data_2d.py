@@ -11,6 +11,7 @@ import numpy.typing as npt
 
 from .data_base import AugmenterSignature
 from .data_base import StackedTimepointsDataBase
+from .moments import lbl_to_local_descriptors
 from .sample_patches import sample_patches
 from .timeseries_2d import bordering_gaussian_weights_timeseries
 from .timeseries_2d import edt_prob_timeseries
@@ -259,3 +260,81 @@ class SimplifiedTrackingData2D(OptimizedStackedTimepointsData2D):
         )
 
         return new_xs, [prob, dist_and_mask, displacement_maps, tracked_maps]
+
+
+class SegmentationByDisplacementVectors(OptimizedStackedTimepointsData2D):
+    """Adds tracking preprocessing to StarDist."""
+
+    def __getitem__(
+        self, i: int
+    ) -> Tuple[List[npt.NDArray[np.double]], List[npt.NDArray[np.double]]]:
+        """Return batch i as numpy array."""
+        idx = self.batch(i)
+        arrays = [
+            sample_patches(
+                (self.ys[k],) + self.channels_as_tuple(self.xs[k]),
+                patch_size=self.patch_size,
+                n_samples=1,
+                valid_inds=self.get_valid_inds(k),
+            )
+            for k in idx
+        ]
+
+        if self.n_channel is None:
+            xs, ys = list(zip(*[(x[0][self.b], y[0]) for y, x in arrays]))
+        else:
+            xs, ys = list(
+                zip(
+                    *[
+                        (np.stack([_x[0] for _x in x], axis=-1)[self.b], y[0])
+                        for y, *x in arrays
+                    ]
+                )
+            )
+
+        xs, ys = tuple(zip(*tuple(self.augmenter(_x, _y) for _x, _y in zip(xs, ys))))
+
+        if xs[0].ndim == 3:
+            xs = [
+                np.expand_dims(x, axis=-1) for x in xs  # type: ignore [no-untyped-call]
+            ]
+        new_xs = np.stack(
+            [
+                np.concatenate(  # type: ignore [no-untyped-call]
+                    [x[i] for i in range(self.len_t)], axis=-1
+                )
+                for x in xs
+            ]
+        )
+
+        # Only use center y and its successor
+        time_slice = slice(self.mid_t, self.mid_t + 2)
+        ys = [y[time_slice, ...] for y in ys]
+
+        slices = (1,) + self.b[1:]
+        prob_descriptors = [
+            lbl_to_local_descriptors(y[slices][self.ss_grid[1:3]]) for y in ys
+        ]
+        prob = np.stack([pd[..., :1] for pd in prob_descriptors])
+        descriptors_mask = np.stack(
+            [
+                np.concatenate([pd[..., 1:], pd[..., :1]], axis=-1)
+                for pd in prob_descriptors
+            ]
+        )
+
+        displacement_maps_tracked = [
+            prepare_displacement_maps_timeseries(lbl, b=self.b, ss_grid=self.ss_grid)
+            for lbl in ys
+        ]
+        displacement_maps = np.stack(
+            [maps_tracked[0] for maps_tracked in displacement_maps_tracked]
+        )
+        tracked_maps = np.stack(
+            [maps_tracked[1] for maps_tracked in displacement_maps_tracked]
+        )
+
+        print(prob[0].shape)
+        print(descriptors_mask[0].shape)
+
+        return [new_xs], [prob, descriptors_mask, displacement_maps, tracked_maps]

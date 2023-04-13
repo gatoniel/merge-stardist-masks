@@ -39,6 +39,7 @@ from tqdm import tqdm  # type: ignore [import]
 
 from .config_2d import StackedTimepointsConfig2D
 from .data_2d import OptimizedStackedTimepointsData2D
+from .data_2d import SegmentationByDisplacementVectors
 from .data_2d import SimplifiedTrackingData2D
 from .data_2d import StackedTimepointsSimplifiedTrackingData2D
 from .data_base import AugmenterSignature
@@ -136,15 +137,18 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             )(unet_class)
             return Model([input_img], [output_prob, output_dist, output_prob_class])
         elif self.config.tracking:
+            output_len_t_ = self.config.output_len_t - 1
+            if output_len_t_ == 0:
+                output_len_t_ = 1
             output_displacement = Conv2D(
-                (self.config.output_len_t - 1) * 2,
+                output_len_t_ * 2,
                 (1, 1),
                 name="displacement",
                 padding="same",
                 activation="linear",
             )(unet)
             output_tracked = Conv2D(
-                self.config.output_len_t - 1,
+                output_len_t_,
                 (1, 1),
                 name="tracked",
                 padding="same",
@@ -317,7 +321,9 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         workers: int = 1,
     ) -> tf.keras.callbacks.History:
         """Monkey patch the original StarDistData2D generator."""
-        if self.config.tracking:
+        if self.config.segmentation_by_vectors:
+            dataloader = SegmentationByDisplacementVectors
+        elif self.config.tracking:
             if self.config.predict_all_timepoints:
                 dataloader = StackedTimepointsSimplifiedTrackingData2D
             else:
@@ -581,12 +587,15 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             [x[i] for i in range(self.config.len_t)], axis=-1
         )
         if self.config.tracking:
+            output_len_t_ = self.config.output_len_t - 1
+            if output_len_t_ == 0:
+                output_len_t_ = 1
             prob, dists, displacement, tracked = self.predict(x)
             displacements = np.split(  # type: ignore [no-untyped-call]
-                displacement, self.config.output_len_t - 1, axis=-1
+                displacement, output_len_t_, axis=-1
             )
             trackeds = np.split(  # type: ignore [no-untyped-call]
-                tracked, self.config.output_len_t - 1, axis=-1
+                tracked, output_len_t_, axis=-1
             )
             displacement_map = np.stack(
                 [
