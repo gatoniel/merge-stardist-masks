@@ -256,6 +256,12 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 self.config.train_class_weights, ndim=self.config.n_dim
             )
             loss = [prob_loss, dist_loss, prob_class_loss]
+        elif self.config.segmentation_by_vectors:
+            latent_loss = "mean_squared_error"
+            prob_loss = "binary_crossentropy"
+            displacement_loss = "mean_squared_error"
+            tracked_loss = "binary_crossentropy"
+            loss = [prob_loss, latent_loss, displacement_loss, tracked_loss]
         elif self.config.tracking:
             displacement_loss = "mean_squared_error"
             tracked_loss = "binary_crossentropy"
@@ -269,7 +275,7 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             loss_weights=list(self.config.train_loss_weights),
             metrics={
                 "prob": kld,
-                "dist": [relevant_mae, relevant_mse, dist_iou_metric],
+                # "dist": [relevant_mae, relevant_mse, dist_iou_metric],
             },
         )
 

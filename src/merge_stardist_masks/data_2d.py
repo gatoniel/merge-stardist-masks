@@ -316,12 +316,7 @@ class SegmentationByDisplacementVectors(OptimizedStackedTimepointsData2D):
             lbl_to_local_descriptors(y[slices][self.ss_grid[1:3]]) for y in ys
         ]
         prob = np.stack([pd[..., :1] for pd in prob_descriptors])
-        descriptors_mask = np.stack(
-            [
-                np.concatenate([pd[..., 1:], pd[..., :1]], axis=-1)
-                for pd in prob_descriptors
-            ]
-        )
+        descriptors = np.stack([pd[..., 1:] for pd in prob_descriptors])
 
         displacement_maps_tracked = [
             prepare_displacement_maps_timeseries(lbl, b=self.b, ss_grid=self.ss_grid)
@@ -334,4 +329,4 @@ class SegmentationByDisplacementVectors(OptimizedStackedTimepointsData2D):
             [maps_tracked[1] for maps_tracked in displacement_maps_tracked]
         )
 
-        return [new_xs], [prob, descriptors_mask, displacement_maps, tracked_maps]
+        return [new_xs], [prob, descriptors, displacement_maps, tracked_maps]
