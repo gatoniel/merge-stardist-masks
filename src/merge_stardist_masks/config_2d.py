@@ -86,7 +86,9 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
 
         self.train_dist_loss = "mae"
         if self.n_classes is None:
-            if self.tracking:
+            if self.segmentation_by_vectors:
+                self.train_loss_weights: Tuple[float, ...] = (1.0, 1.0, 1.0, 1.0)
+            elif self.tracking:
                 self.train_loss_weights: Tuple[float, ...] = (1.0, 0.2, 1.0, 1.0)
             else:
                 self.train_loss_weights = (1, 0.2)
