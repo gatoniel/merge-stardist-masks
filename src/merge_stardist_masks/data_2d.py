@@ -334,7 +334,4 @@ class SegmentationByDisplacementVectors(OptimizedStackedTimepointsData2D):
             [maps_tracked[1] for maps_tracked in displacement_maps_tracked]
         )
 
-        print(prob[0].shape)
-        print(descriptors_mask[0].shape)
-
         return [new_xs], [prob, descriptors_mask, displacement_maps, tracked_maps]
