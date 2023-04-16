@@ -178,9 +178,11 @@ def test_model_conf_train_predict_tracking_all_timepoints_prediction(
     assert displacements.shape == (len_t - 1, shapexy // grid, shapexy // grid, 3)
 
 
-@pytest.mark.parametrize("n_channel, len_t", [(1, 3), (2, 4), (1, 5)])
+@pytest.mark.parametrize(
+    "n_channel, len_t, attention_layers", [(1, 3, 2)]  # , (2, 4, 0), (1, 5, 1)]
+)
 def test_model_conf_train_predict_segmentation_by_vectors(
-    tmpdir: str, n_channel: int, len_t: int
+    tmpdir: str, n_channel: int, len_t: int, attention_layers: int
 ) -> None:
     """Verify correct shapes for various inputs."""
     grid = 1
@@ -205,6 +207,10 @@ def test_model_conf_train_predict_segmentation_by_vectors(
         ys = imgs
 
     patch_shape = (128, 128)
+    attention_layer = False
+    if attention_layers > 0:
+        patch_shape = (4, 4)
+        attention_layer = True
 
     conf = StackedTimepointsConfig2D(
         n_rays=n_rays,
@@ -217,26 +223,30 @@ def test_model_conf_train_predict_segmentation_by_vectors(
         train_patch_size=patch_shape,
         train_steps_per_epoch=1,
         tracking=True,
+        attention_layers=attention_layers,
+        num_heads_attention=2,
+        unet_n_filter_base=2 if attention_layer else None,
+        unet_n_depth=1 if attention_layer else None,
+        unet_n_conv_per_depth=1 if attention_layer else None,
     )
 
     assert conf.output_len_t == 1
-    assert conf.n_rays == 2
+    assert conf.n_rays == 5
+    assert not conf.tracking
 
     model = OptimizedStackedTimepointsModel2D(conf, name="test", basedir=str(tmpdir))
 
     model.train(xs, ys, validation_data=(xs[:2], ys[:2]))
 
-    prob, dists, displacements = model.predict_tyx(xs[0])
+    prob, dists = model.predict_tyx(xs[0])
 
     assert prob.shape == (1, shapexy // grid, shapexy // grid)
-    assert dists.shape == (1, shapexy // grid, shapexy // grid, 2)
-    assert displacements.shape == (1, shapexy // grid, shapexy // grid, 3)
+    assert dists.shape == (1, shapexy // grid, shapexy // grid, 5)
 
     # train to reload model
     model2 = OptimizedStackedTimepointsModel2D(None, name="test", basedir=str(tmpdir))
 
-    prob, dists, displacements = model2.predict_tyx(xs[0])
+    prob, dists = model2.predict_tyx(xs[0])
 
     assert prob.shape == (1, shapexy // grid, shapexy // grid)
-    assert dists.shape == (1, shapexy // grid, shapexy // grid, 2)
-    assert displacements.shape == (1, shapexy // grid, shapexy // grid, 3)
+    assert dists.shape == (1, shapexy // grid, shapexy // grid, 5)

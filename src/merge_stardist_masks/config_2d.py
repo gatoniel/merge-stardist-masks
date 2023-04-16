@@ -22,6 +22,7 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         self,
         axes: str = "YX",
         n_rays: int = 32,
+        attention_layers: int = 0,
         len_t: int = 3,
         tracking: bool = False,
         predict_all_timepoints: bool = False,
@@ -44,6 +45,7 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
 
         # directly set by parameters
         self.tracking = tracking
+        self.attention_layers = attention_layers
         self.len_t = len_t
         self.predict_all_timepoints = predict_all_timepoints
         self.segmentation_by_vectors = segmentation_by_vectors
@@ -73,10 +75,17 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         # net_mask_shape not needed but kept for legacy reasons
         if backend_channels_last():
             self.net_input_shape = None, None, self.n_channel_in * self.len_t
+            self.attention_axes = (1, 2)
             # self.net_mask_shape = None, None, 1
         else:
             self.net_input_shape = self.n_channel_in * self.len_t, None, None
+            self.attention_axes = (2, 3)
             # self.net_mask_shape = 1, None, None
+
+        self.num_heads_attention = None
+        self.value_dim_attention = None
+        if self.attention_layers > 0:
+            self.num_heads_attention = 8
 
         self.train_shape_completion = False
         self.train_completion_crop = 32
@@ -139,9 +148,13 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
 
         if self.segmentation_by_vectors:
             self.output_len_t = 1
-            self.n_rays = 2
-            self.tracking = True
+            self.n_rays = 5  # makes 6 together with the prob
+            self.tracking = False
 
         # tensorboard does not work with tracking.
         if self.tracking:
             self.train_tensorboard = False
+
+        if self.attention_layers > 0:
+            self.value_dim_attention = self.unet_n_filter_base
+            self.net_conv_after_unet = 0

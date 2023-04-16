@@ -43,6 +43,8 @@ from .data_2d import SegmentationByDisplacementVectors
 from .data_2d import SimplifiedTrackingData2D
 from .data_2d import StackedTimepointsSimplifiedTrackingData2D
 from .data_base import AugmenterSignature
+from .positional_encodings import TFPositionalEncoding2D
+from .positional_encodings import TFSummer
 from .timeseries_helpers import timeseries_to_batch
 
 # from stardist.utils import _is_power_of_2
@@ -56,6 +58,7 @@ ReduceLROnPlateau, TensorBoard = keras_import(
     "callbacks", "ReduceLROnPlateau", "TensorBoard"
 )
 Model = keras_import("models", "Model")
+MultiHeadAttention = keras_import("layers", "MultiHeadAttention")
 
 
 class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
@@ -99,6 +102,20 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             )(unet_base)
         else:
             unet = unet_base
+
+        print(unet.shape)
+
+        for i in range(self.config.attention_layers):
+            pos_enc = TFSummer(TFPositionalEncoding2D(self.config.value_dim_attention))(
+                unet
+            )
+            print(i, pos_enc.shape)
+            unet = MultiHeadAttention(
+                self.config.num_heads_attention,
+                self.config.value_dim_attention,
+                attention_axes=(1, 2),
+            )(pos_enc, pos_enc)
+            print(unet.shape)
 
         output_prob = Conv2D(
             self.config.output_len_t,
@@ -256,12 +273,6 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 self.config.train_class_weights, ndim=self.config.n_dim
             )
             loss = [prob_loss, dist_loss, prob_class_loss]
-        elif self.config.segmentation_by_vectors:
-            latent_loss = "mean_squared_error"
-            prob_loss = "binary_crossentropy"
-            displacement_loss = "mean_squared_error"
-            tracked_loss = "binary_crossentropy"
-            loss = [prob_loss, latent_loss, displacement_loss, tracked_loss]
         elif self.config.tracking:
             displacement_loss = "mean_squared_error"
             tracked_loss = "binary_crossentropy"

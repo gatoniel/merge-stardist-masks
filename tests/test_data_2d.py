@@ -105,12 +105,10 @@ def test_getitem_segmentation_by_vectors(
         grid=(grid,) * 2,
     )
 
-    [new_x], [probs, descr, displ_maps, displ_tracked] = dg[0]
+    [new_x], [probs, descr_displ_tracked_mask] = dg[0]
 
     outshapexy = patch_size // grid
 
     assert new_x.shape == (batch_size, patch_size, patch_size, len_t * n_channel)
     assert probs.shape == (batch_size, outshapexy, outshapexy, 1)
-    assert descr.shape == (batch_size, outshapexy, outshapexy, 2)
-    assert displ_maps.shape == (batch_size, outshapexy, outshapexy, 2)
-    assert displ_tracked.shape == (batch_size, outshapexy, outshapexy, 1)
+    assert descr_displ_tracked_mask.shape == (batch_size, outshapexy, outshapexy, 6)

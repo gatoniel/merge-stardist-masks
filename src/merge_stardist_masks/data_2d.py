@@ -18,6 +18,8 @@ from .timeseries_2d import edt_prob_timeseries
 from .timeseries_2d import prepare_displacement_maps_timeseries
 from .timeseries_2d import star_dist_timeseries
 from .timeseries_2d import touching_pixels_2d_timeseries
+from .touching_pixels import bordering_gaussian_weights
+from .touching_pixels import touching_pixels_2d
 
 T = TypeVar("T", bound=np.generic)
 
@@ -310,13 +312,21 @@ class SegmentationByDisplacementVectors(OptimizedStackedTimepointsData2D):
         # Only use center y and its successor
         time_slice = slice(self.mid_t, self.mid_t + 2)
         ys = [y[time_slice, ...] for y in ys]
-
         slices = (1,) + self.b[1:]
-        prob_descriptors = [
-            lbl_to_local_descriptors(y[slices][self.ss_grid[1:3]]) for y in ys
-        ]
+        y_ss_grid = [y[slices][self.ss_grid[1:]] for y in ys]
+
+        prob_descriptors = [lbl_to_local_descriptors(y) for y in y_ss_grid]
         prob = np.stack([pd[..., :1] for pd in prob_descriptors])
         descriptors = np.stack([pd[..., 1:] for pd in prob_descriptors])
+
+        touching = np.stack([touching_pixels_2d(lbl) for lbl in y_ss_grid])
+        touching_edt = np.stack(
+            [
+                bordering_gaussian_weights(mask, lbl, sigma=2)
+                for mask, lbl in zip(touching, y_ss_grid)
+            ]
+        )
+        masks: npt.NDArray[np.double] = prob + touching_edt[..., np.newaxis]
 
         displacement_maps_tracked = [
             prepare_displacement_maps_timeseries(lbl, b=self.b, ss_grid=self.ss_grid)
@@ -329,4 +339,9 @@ class SegmentationByDisplacementVectors(OptimizedStackedTimepointsData2D):
             [maps_tracked[1] for maps_tracked in displacement_maps_tracked]
         )
 
-        return [new_xs], [prob, descriptors, displacement_maps, tracked_maps]
+        descr_displ_tracked_mask = np.concatenate(
+            [descriptors, displacement_maps, tracked_maps, masks],
+            axis=-1,
+        )
+
+        return [new_xs], [prob, descr_displ_tracked_mask]
