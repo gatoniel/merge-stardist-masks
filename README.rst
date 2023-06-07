@@ -1,5 +1,5 @@
-Merge StarDist Masks
-====================
+StarDist OPP
+============
 
 |PyPI| |Status| |Python Version| |License|
 
@@ -36,19 +36,21 @@ Merge StarDist Masks
    :alt: Black
 
 
+This repository contains the python package for the new StarDist post-processing step *StarDist OPP*. *StarDist OPP* allows to use `StarDist`_ segmentation on non-star-convex objects. In our `paper`_, we show that *StarDist OPP* outperforms other methods in instance segmentation tasks for three-dimensional microbial biofilms. Check it out for more information.
+
+.. image:: https://github.com/gatoniel/merge-stardist-masks/raw/paper/images/graphical-overview.png
+
+
 Features
 --------
 
-* This new post-processing step allows to use `StarDist`_ segmentation on
-  non-star-convex objects.
+* *StarDist OPP* merges masks together - hence the repository name
 
-  * Instead of NMS, this post-processing naively merges masks together
+.. image:: https://github.com/gatoniel/merge-stardist-masks/raw/paper/images/graphical-algorithm-explanation.png
 
-  * Masks whos center points lie within another mask are added to that mask
+* *StarDist OPP* works in 2D and 3D
 
-* Works in 2D and 3D
-
-* In 2D, it works on big and winding objects
+* In 2D, *StarDist OPP* works also on big and winding objects
 
 
 Requirements
@@ -57,20 +59,20 @@ Requirements
 * A `StarDist`_ installation.
 
 
+Usage
+-----
+
+Please see the EXAMPLE in `Usage <Usage_>`_ for details or check out the `tutorial`_ of our `napari plugin`_ to directly use *StarDist OPP* on your data.
+
+
 Installation
 ------------
 
-You can install *Merge StarDist Masks* via pip_ from PyPI_:
+You can install *StarDist OPP* via pip_ from PyPI_:
 
 .. code:: console
 
    $ pip install merge-stardist-masks
-
-
-Usage
------
-
-Please see the EXAMPLE in `Usage <Usage_>`_ for details.
 
 
 Contributing
@@ -84,7 +86,7 @@ License
 -------
 
 Distributed under the terms of the `MIT license`_,
-*Merge StarDist Masks* is free and open source software.
+*StarDist OPP* is free and open source software.
 
 
 Issues
@@ -92,6 +94,26 @@ Issues
 
 If you encounter any problems,
 please `file an issue`_ along with a detailed description.
+
+
+How to cite
+-----------
+
+.. code:: bibtex
+
+   @article{https://doi.org/10.1111/mmi.15064,
+   author = {Jelli, Eric and Ohmura, Takuya and Netter, Niklas and Abt, Martin and Jiménez-Siebert, Eva and Neuhaus, Konstantin and Rode, Daniel K. H. and Nadell, Carey D. and Drescher, Knut},
+   title = {Single-cell segmentation in bacterial biofilms with an optimized deep learning method enables tracking of cell lineages and measurements of growth rates},
+   journal = {Molecular Microbiology},
+   volume = {n/a},
+   number = {n/a},
+   pages = {},
+   keywords = {3D segmentation, biofilm, deep learning, image analysis, image cytometry, Vibrio cholerae},
+   doi = {https://doi.org/10.1111/mmi.15064},
+   url = {https://onlinelibrary.wiley.com/doi/abs/10.1111/mmi.15064},
+   eprint = {https://onlinelibrary.wiley.com/doi/pdf/10.1111/mmi.15064},
+   abstract = {Abstract Bacteria often grow into matrix-encased three-dimensional (3D) biofilm communities, which can be imaged at cellular resolution using confocal microscopy. From these 3D images, measurements of single-cell properties with high spatiotemporal resolution are required to investigate cellular heterogeneity and dynamical processes inside biofilms. However, the required measurements rely on the automated segmentation of bacterial cells in 3D images, which is a technical challenge. To improve the accuracy of single-cell segmentation in 3D biofilms, we first evaluated recent classical and deep learning segmentation algorithms. We then extended StarDist, a state-of-the-art deep learning algorithm, by optimizing the post-processing for bacteria, which resulted in the most accurate segmentation results for biofilms among all investigated algorithms. To generate the large 3D training dataset required for deep learning, we developed an iterative process of automated segmentation followed by semi-manual correction, resulting in >18,000 annotated Vibrio cholerae cells in 3D images. We demonstrate that this large training dataset and the neural network with optimized post-processing yield accurate segmentation results for biofilms of different species and on biofilm images from different microscopes. Finally, we used the accurate single-cell segmentation results to track cell lineages in biofilms and to perform spatiotemporal measurements of single-cell growth rates during biofilm development.}
+   }
 
 
 Credits
@@ -107,6 +129,9 @@ This project was generated from `@cjolowicz`_'s `Hypermodern Python Cookiecutter
 .. _file an issue: https://github.com/gatoniel/merge-stardist-masks/issues
 .. _pip: https://pip.pypa.io/
 .. _StarDist: https://github.com/stardist/stardist
+.. _paper: https://doi.org/10.1111/mmi.15064
+.. _napari plugin: https://github.com/gatoniel/napari-merge-stardist-masks
+.. _tutorial: https://merge-stardist-masks.readthedocs.io/en/latest/napari-plugin.html
 .. github-only
 .. _Contributor Guide: CONTRIBUTING.rst
 .. _Usage: https://merge-stardist-masks.readthedocs.io/en/latest/usage.html
