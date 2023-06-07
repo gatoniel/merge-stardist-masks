@@ -38,7 +38,7 @@ StarDist OPP
 
 This repository contains the python package for the new StarDist post-processing step *StarDist OPP*. *StarDist OPP* allows to use `StarDist`_ segmentation on non-star-convex objects. In our `paper`_, we show that *StarDist OPP* outperforms other methods in instance segmentation tasks for three-dimensional microbial biofilms. Check it out for more information.
 
-.. image:: https://github.com/gatoniel/merge-stardist-masks/raw/paper/images/graphical-overview.png
+.. image:: https://github.com/gatoniel/merge-stardist-masks/raw/main/images/graphical-overview.png
 
 
 Features
@@ -46,7 +46,7 @@ Features
 
 * *StarDist OPP* merges masks together - hence the repository name
 
-.. image:: https://github.com/gatoniel/merge-stardist-masks/raw/paper/images/graphical-algorithm-explanation.png
+.. image:: https://github.com/gatoniel/merge-stardist-masks/raw/main/images/graphical-algorithm-explanation.png
 
 * *StarDist OPP* works in 2D and 3D
 
