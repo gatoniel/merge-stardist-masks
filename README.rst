@@ -36,15 +36,13 @@ StarDist OPP
    :alt: Black
 
 
-Features
---------
-
 This repository contains the python package for the new StarDist post-processing step *StarDist OPP*. *StarDist OPP* allows to use `StarDist`_ segmentation on non-star-convex objects. In our `paper`_, we show that *StarDist OPP* outperforms other methods in instance segmentation tasks for three-dimensional microbial biofilms. Check it out for more information.
 
 .. image:: https://github.com/gatoniel/merge-stardist-masks/raw/paper/images/graphical-overview.png
 
 
-Some brief information:
+Features
+--------
 
 * *StarDist OPP* merges masks together - hence the repository name
 
@@ -61,6 +59,12 @@ Requirements
 * A `StarDist`_ installation.
 
 
+Usage
+-----
+
+Please see the EXAMPLE in `Usage <Usage_>`_ for details or check out the `tutorial`_ of our `napari plugin`_ to directly use *StarDist OPP* on your data.
+
+
 Installation
 ------------
 
@@ -69,12 +73,6 @@ You can install *StarDist OPP* via pip_ from PyPI_:
 .. code:: console
 
    $ pip install merge-stardist-masks
-
-
-Usage
------
-
-Please see the EXAMPLE in `Usage <Usage_>`_ for details or check out the `tutorial`_ of our `napari plugin <napari_plugin_>`_ to directly use *StarDist OPP* on your data.
 
 
 Contributing
@@ -131,9 +129,9 @@ This project was generated from `@cjolowicz`_'s `Hypermodern Python Cookiecutter
 .. _file an issue: https://github.com/gatoniel/merge-stardist-masks/issues
 .. _pip: https://pip.pypa.io/
 .. _StarDist: https://github.com/stardist/stardist
+.. _paper: https://doi.org/10.1111/mmi.15064
+.. _napari plugin: https://github.com/gatoniel/napari-merge-stardist-masks
+.. _tutorial: https://merge-stardist-masks.readthedocs.io/en/latest/napari-plugin.html
 .. github-only
 .. _Contributor Guide: CONTRIBUTING.rst
 .. _Usage: https://merge-stardist-masks.readthedocs.io/en/latest/usage.html
-.. _paper: https://doi.org/10.1111/mmi.15064
-.. _napari_plugin: https://github.com/gatoniel/napari-merge-stardist-masks
-.. _tutorial: https://merge-stardist-masks.readthedocs.io/en/latest/napari-plugin.html

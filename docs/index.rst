@@ -9,6 +9,7 @@
    :maxdepth: 1
 
    usage
+   napari plugin <napari-plugin>
    reference
    contributing
    Code of Conduct <codeofconduct>
