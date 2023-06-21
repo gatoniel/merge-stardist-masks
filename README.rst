@@ -105,15 +105,18 @@ How to cite
    author = {Jelli, Eric and Ohmura, Takuya and Netter, Niklas and Abt, Martin and Jiménez-Siebert, Eva and Neuhaus, Konstantin and Rode, Daniel K. H. and Nadell, Carey D. and Drescher, Knut},
    title = {Single-cell segmentation in bacterial biofilms with an optimized deep learning method enables tracking of cell lineages and measurements of growth rates},
    journal = {Molecular Microbiology},
-   volume = {n/a},
-   number = {n/a},
-   pages = {},
+   volume = {119},
+   number = {6},
+   pages = {659-676},
    keywords = {3D segmentation, biofilm, deep learning, image analysis, image cytometry, Vibrio cholerae},
    doi = {https://doi.org/10.1111/mmi.15064},
    url = {https://onlinelibrary.wiley.com/doi/abs/10.1111/mmi.15064},
    eprint = {https://onlinelibrary.wiley.com/doi/pdf/10.1111/mmi.15064},
-   abstract = {Abstract Bacteria often grow into matrix-encased three-dimensional (3D) biofilm communities, which can be imaged at cellular resolution using confocal microscopy. From these 3D images, measurements of single-cell properties with high spatiotemporal resolution are required to investigate cellular heterogeneity and dynamical processes inside biofilms. However, the required measurements rely on the automated segmentation of bacterial cells in 3D images, which is a technical challenge. To improve the accuracy of single-cell segmentation in 3D biofilms, we first evaluated recent classical and deep learning segmentation algorithms. We then extended StarDist, a state-of-the-art deep learning algorithm, by optimizing the post-processing for bacteria, which resulted in the most accurate segmentation results for biofilms among all investigated algorithms. To generate the large 3D training dataset required for deep learning, we developed an iterative process of automated segmentation followed by semi-manual correction, resulting in >18,000 annotated Vibrio cholerae cells in 3D images. We demonstrate that this large training dataset and the neural network with optimized post-processing yield accurate segmentation results for biofilms of different species and on biofilm images from different microscopes. Finally, we used the accurate single-cell segmentation results to track cell lineages in biofilms and to perform spatiotemporal measurements of single-cell growth rates during biofilm development.}
+   abstract = {Abstract Bacteria often grow into matrix-encased three-dimensional (3D) biofilm communities, which can be imaged at cellular resolution using confocal microscopy. From these 3D images, measurements of single-cell properties with high spatiotemporal resolution are required to investigate cellular heterogeneity and dynamical processes inside biofilms. However, the required measurements rely on the automated segmentation of bacterial cells in 3D images, which is a technical challenge. To improve the accuracy of single-cell segmentation in 3D biofilms, we first evaluated recent classical and deep learning segmentation algorithms. We then extended StarDist, a state-of-the-art deep learning algorithm, by optimizing the post-processing for bacteria, which resulted in the most accurate segmentation results for biofilms among all investigated algorithms. To generate the large 3D training dataset required for deep learning, we developed an iterative process of automated segmentation followed by semi-manual correction, resulting in >18,000 annotated Vibrio cholerae cells in 3D images. We demonstrate that this large training dataset and the neural network with optimized post-processing yield accurate segmentation results for biofilms of different species and on biofilm images from different microscopes. Finally, we used the accurate single-cell segmentation results to track cell lineages in biofilms and to perform spatiotemporal measurements of single-cell growth rates during biofilm development.},
+   year = {2023}
    }
+
+.. image:: https://github.com/gatoniel/merge-stardist-masks/raw/main/images/stardist-opp-cover-image.png
 
 
 Credits
