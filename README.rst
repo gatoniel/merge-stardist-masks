@@ -116,7 +116,7 @@ How to cite
    year = {2023}
    }
 
-
+.. image:: https://github.com/gatoniel/merge-stardist-masks/raw/final_reference/images/stardist-opp-cover-image.png
 
 
 Credits
