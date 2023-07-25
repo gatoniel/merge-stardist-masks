@@ -34,7 +34,7 @@ StarDist OPP
 .. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
    :target: https://github.com/psf/black
    :alt: Black
-.. image:: https://zenodo.org/badge/454865222.svg
+.. |Zenodo| image:: https://zenodo.org/badge/454865222.svg
    :target: https://zenodo.org/badge/latestdoi/454865222
    :alt: Zenodo
 
