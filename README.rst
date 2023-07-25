@@ -1,7 +1,7 @@
 StarDist OPP
 ============
 
-|PyPI| |Status| |Python Version| |License|
+|PyPI| |Zenodo| |Status| |Python Version| |License|
 
 |Read the Docs| |Tests| |Codecov|
 
