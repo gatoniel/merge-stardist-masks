@@ -146,6 +146,8 @@ def safety(session: Session) -> None:
         "--ignore=44715",
         "--ignore=44716",
         "--ignore=44717",
+        # ignore a tornado safety issue
+        "--ignore=59071",
     )
 
 

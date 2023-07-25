@@ -1,7 +1,7 @@
 StarDist OPP
 ============
 
-|PyPI| |Status| |Python Version| |License|
+|PyPI| |Zenodo| |Status| |Python Version| |License|
 
 |Read the Docs| |Tests| |Codecov|
 
@@ -34,6 +34,9 @@ StarDist OPP
 .. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
    :target: https://github.com/psf/black
    :alt: Black
+.. |Zenodo| image:: https://zenodo.org/badge/454865222.svg
+   :target: https://zenodo.org/badge/latestdoi/454865222
+   :alt: Zenodo
 
 
 This repository contains the python package for the new StarDist post-processing step *StarDist OPP*. *StarDist OPP* allows to use `StarDist`_ segmentation on non-star-convex objects. In our `paper`_, we show that *StarDist OPP* outperforms other methods in instance segmentation tasks for three-dimensional microbial biofilms. Check it out for more information.
