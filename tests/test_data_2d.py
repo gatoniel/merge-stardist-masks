@@ -51,21 +51,15 @@ def test_getitem(
         slice_x1 = slice(i * n_channel, (i + 1) * n_channel)
         slice_x2 = slice((i + 1) * n_channel, (i + 2) * n_channel)
 
-        np.testing.assert_equal(  # type: ignore [no-untyped-call]
-            new_x[..., slice_x1], new_x[..., slice_x2]
-        )
+        np.testing.assert_equal(new_x[..., slice_x1], new_x[..., slice_x2])
 
-        np.testing.assert_equal(  # type: ignore [no-untyped-call]
-            probs[..., i], probs[..., i + 1]
-        )
+        np.testing.assert_equal(probs[..., i], probs[..., i + 1])
 
         slice_y1 = slice(i * n_rays, (i + 1) * n_rays)
         slice_y2 = slice((i + 1) * n_rays, (i + 2) * n_rays)
 
-        np.testing.assert_equal(  # type: ignore [no-untyped-call]
-            dists[..., slice_y1], dists[..., slice_y2]
-        )
+        np.testing.assert_equal(dists[..., slice_y1], dists[..., slice_y2])
 
-        np.testing.assert_equal(  # type: ignore [no-untyped-call]
+        np.testing.assert_equal(
             dists[..., mask_start + i], dists[..., mask_start + i + 1]
         )
