@@ -182,8 +182,8 @@ def test_len_and_types_of_outputs_in_slice_point(
     assert len(slices) == len(point)
     assert len(centered_point) == len(point)
 
-    assert type(slices) == tuple
-    assert type(slices[0]) == slice
+    assert isinstance(slices, tuple)
+    assert isinstance(slices[0], slice)
 
 
 def test_values_of_slice_point(
