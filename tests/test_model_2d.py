@@ -23,8 +23,8 @@ def test_model_conf_train_predict(
         img = np.repeat(img[..., np.newaxis], n_channel, axis=-1)
 
     imgs = [
-        np.copy(img),  # type: ignore [no-untyped-call]
-        np.copy(img),  # type: ignore [no-untyped-call]
+        np.copy(img),
+        np.copy(img),
         img,
     ]
 
