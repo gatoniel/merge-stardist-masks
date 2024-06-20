@@ -39,7 +39,12 @@ from tqdm import tqdm  # type: ignore [import]
 
 from .config_2d import StackedTimepointsConfig2D
 from .data_2d import OptimizedStackedTimepointsData2D
+from .data_2d import SegmentationByDisplacementVectors
+from .data_2d import SimplifiedTrackingData2D
+from .data_2d import StackedTimepointsSimplifiedTrackingData2D
 from .data_base import AugmenterSignature
+from .positional_encodings import TFPositionalEncoding2D
+from .positional_encodings import TFSummer
 from .timeseries_helpers import timeseries_to_batch
 
 # from stardist.utils import _is_power_of_2
@@ -53,6 +58,7 @@ ReduceLROnPlateau, TensorBoard = keras_import(
     "callbacks", "ReduceLROnPlateau", "TensorBoard"
 )
 Model = keras_import("models", "Model")
+MultiHeadAttention = keras_import("layers", "MultiHeadAttention")
 
 
 class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
@@ -97,11 +103,29 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         else:
             unet = unet_base
 
+        print(unet.shape)
+
+        for i in range(self.config.attention_layers):
+            pos_enc = TFSummer(TFPositionalEncoding2D(self.config.value_dim_attention))(
+                unet
+            )
+            print(i, pos_enc.shape)
+            unet = MultiHeadAttention(
+                self.config.num_heads_attention,
+                self.config.value_dim_attention,
+                attention_axes=(1, 2),
+            )(pos_enc, pos_enc)
+            print(unet.shape)
+
         output_prob = Conv2D(
-            self.config.len_t, (1, 1), name="prob", padding="same", activation="sigmoid"
+            self.config.output_len_t,
+            (1, 1),
+            name="prob",
+            padding="same",
+            activation="sigmoid",
         )(unet)
         output_dist = Conv2D(
-            self.config.n_rays * self.config.len_t,
+            self.config.n_rays * self.config.output_len_t,
             (1, 1),
             name="dist",
             padding="same",
@@ -129,6 +153,28 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 activation="softmax",
             )(unet_class)
             return Model([input_img], [output_prob, output_dist, output_prob_class])
+        elif self.config.tracking:
+            output_len_t_ = self.config.output_len_t - 1
+            if output_len_t_ == 0:
+                output_len_t_ = 1
+            output_displacement = Conv2D(
+                output_len_t_ * 2,
+                (1, 1),
+                name="displacement",
+                padding="same",
+                activation="linear",
+            )(unet)
+            output_tracked = Conv2D(
+                output_len_t_,
+                (1, 1),
+                name="tracked",
+                padding="same",
+                activation="linear",
+            )(unet)
+            return Model(
+                [input_img],
+                [output_prob, output_dist, output_displacement, output_tracked],
+            )
         else:
             return Model([input_img], [output_prob, output_dist])
 
@@ -145,9 +191,11 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         prob_loss = "binary_crossentropy"
 
         self.num_or_size_splits = [
-            self.config.n_rays for _ in range(self.config.len_t)
-        ] + [1 for _ in range(self.config.len_t)]
-        self.num_or_size_splits_pred = self.num_or_size_splits[: self.config.len_t]
+            self.config.n_rays for _ in range(self.config.output_len_t)
+        ] + [1 for _ in range(self.config.output_len_t)]
+        self.num_or_size_splits_pred = self.num_or_size_splits[
+            : self.config.output_len_t
+        ]
 
         def split_dist_maps(
             dist_true_mask: EagerTensor, dist_pred: EagerTensor
@@ -166,10 +214,10 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 tf.stack(
                     [
                         masked_dist_loss(
-                            true_splits[i + self.config.len_t],
+                            true_splits[i + self.config.output_len_t],
                             reg_weight=self.config.train_background_reg,
                         )(true_splits[i], pred_splits[i])
-                        for i in range(self.config.len_t)
+                        for i in range(self.config.output_len_t)
                     ]
                 )
             )
@@ -182,10 +230,10 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 tf.stack(
                     [
                         masked_metric_iou(
-                            true_splits[i + self.config.len_t],
+                            true_splits[i + self.config.output_len_t],
                             reg_weight=0,
                         )(true_splits[i], pred_splits[i])
-                        for i in range(self.config.len_t)
+                        for i in range(self.config.output_len_t)
                     ]
                 )
             )
@@ -198,9 +246,9 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 tf.stack(
                     [
                         masked_metric_mae(
-                            true_splits[i + self.config.len_t],
+                            true_splits[i + self.config.output_len_t],
                         )(true_splits[i], pred_splits[i])
-                        for i in range(self.config.len_t)
+                        for i in range(self.config.output_len_t)
                     ]
                 )
             )
@@ -213,9 +261,9 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 tf.stack(
                     [
                         masked_metric_mse(
-                            true_splits[i + self.config.len_t],
+                            true_splits[i + self.config.output_len_t],
                         )(true_splits[i], pred_splits[i])
-                        for i in range(self.config.len_t)
+                        for i in range(self.config.output_len_t)
                     ]
                 )
             )
@@ -225,6 +273,10 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 self.config.train_class_weights, ndim=self.config.n_dim
             )
             loss = [prob_loss, dist_loss, prob_class_loss]
+        elif self.config.tracking:
+            displacement_loss = "mean_squared_error"
+            tracked_loss = "binary_crossentropy"
+            loss = [prob_loss, dist_loss, displacement_loss, tracked_loss]
         else:
             loss = [prob_loss, dist_loss]
 
@@ -234,7 +286,7 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             loss_weights=list(self.config.train_loss_weights),
             metrics={
                 "prob": kld,
-                "dist": [relevant_mae, relevant_mse, dist_iou_metric],
+                # "dist": [relevant_mae, relevant_mse, dist_iou_metric],
             },
         )
 
@@ -286,8 +338,19 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         workers: int = 1,
     ) -> tf.keras.callbacks.History:
         """Monkey patch the original StarDistData2D generator."""
+        if self.config.segmentation_by_vectors:
+            dataloader = SegmentationByDisplacementVectors
+        elif self.config.tracking:
+            if self.config.predict_all_timepoints:
+                dataloader = StackedTimepointsSimplifiedTrackingData2D
+            else:
+                dataloader = SimplifiedTrackingData2D
+        else:
+            dataloader = OptimizedStackedTimepointsData2D
+
         with patch(
-            "stardist.models.model2d.StarDistData2D", OptimizedStackedTimepointsData2D
+            "stardist.models.model2d.StarDistData2D",
+            dataloader,
         ):
             return super().train(
                 X=x,
@@ -467,13 +530,22 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             tile_generator, output_shape, create_empty_output = tiling_setup()
 
             # MODIFIED
-            prob = create_empty_output(self.config.len_t)
-            dist = create_empty_output(self.config.n_rays * self.config.len_t)
+            prob = create_empty_output(self.config.output_len_t)
+            dist = create_empty_output(self.config.n_rays * self.config.output_len_t)
             if self._is_multiclass():
                 prob_class = create_empty_output(self.config.n_classes + 1)
-                result_ = (prob, dist, prob_class)
+                result_: Tuple[npt.NDArray[np.double], ...] = (prob, dist, prob_class)
+            elif self.config.tracking:
+                displacement = create_empty_output((self.config.output_len_t - 1) * 2)
+                tracked = create_empty_output(self.config.output_len_t - 1)
+                result_ = (
+                    prob,
+                    dist,
+                    displacement,
+                    tracked,
+                )
             else:
-                result_ = (prob, dist)  # type: ignore [assignment]
+                result_ = (prob, dist)
 
             for tile, s_src, s_dst in tile_generator:
                 # predict_direct -> prob, dist, [prob_class if multi_class]
@@ -506,14 +578,18 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         # prob
         # result[0] = np.take(result[0], 0, axis=channel)
         # dist
-        result[1] = np.maximum(
-            1e-3, result[1]
-        )  # avoid small dist values to prevent problems with Qhull
+        if not self.config.segmentation_by_vectors:
+            result[1] = np.maximum(
+                1e-3, result[1]
+            )  # avoid small dist values to prevent problems with Qhull
         result[1] = np.moveaxis(result[1], channel, -1)
 
         if self._is_multiclass():
             # prob_class
             result[2] = np.moveaxis(result[2], channel, -1)
+        elif self.config.tracking:
+            result[2] = np.moveaxis(result[2], channel, -1)
+            result[3] = np.moveaxis(result[3], channel, -1)
 
         # last "yield" is the actual output that would
         # have been "return"ed if this was a regular function
@@ -528,18 +604,42 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         x = np.concatenate(  # type: ignore [no-untyped-call]
             [x[i] for i in range(self.config.len_t)], axis=-1
         )
-        prob, dists = self.predict(x)
+        if self.config.tracking:
+            output_len_t_ = self.config.output_len_t - 1
+            if output_len_t_ == 0:
+                output_len_t_ = 1
+            prob, dists, displacement, tracked = self.predict(x)
+            displacements = np.split(  # type: ignore [no-untyped-call]
+                displacement, output_len_t_, axis=-1
+            )
+            trackeds = np.split(  # type: ignore [no-untyped-call]
+                tracked, output_len_t_, axis=-1
+            )
+            displacement_map = np.stack(
+                [
+                    np.concatenate(  # type: ignore [no-untyped-call]
+                        [disp, track], axis=-1
+                    )
+                    for disp, track in zip(displacements, trackeds)
+                ],
+                axis=0,
+            )
+        else:
+            prob, dists = self.predict(x)
 
         prob = np.transpose(prob, (2, 0, 1))
 
         dists = np.stack(
             np.split(  # type: ignore [no-untyped-call]
-                dists, self.config.len_t, axis=-1
+                dists, self.config.output_len_t, axis=-1
             ),
             axis=0,
         )
 
-        return prob, dists
+        if self.config.tracking:
+            return prob, dists, displacement_map
+        else:
+            return prob, dists
 
     def predict_tyx_list(
         self, xs: List[npt.NDArray[np.double]]

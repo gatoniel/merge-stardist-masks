@@ -22,7 +22,11 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         self,
         axes: str = "YX",
         n_rays: int = 32,
+        attention_layers: int = 0,
         len_t: int = 3,
+        tracking: bool = False,
+        predict_all_timepoints: bool = False,
+        segmentation_by_vectors: bool = False,
         n_channel_in: int = 1,
         grid: Tuple[int, ...] = (1, 1),
         n_classes: Optional[int] = None,
@@ -40,7 +44,11 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         n_classes is None or _raise(NotImplementedError("n_classes not implemented."))
 
         # directly set by parameters
+        self.tracking = tracking
+        self.attention_layers = attention_layers
         self.len_t = len_t
+        self.predict_all_timepoints = predict_all_timepoints
+        self.segmentation_by_vectors = segmentation_by_vectors
         self.n_rays = int(n_rays)
         self.grid = _normalize_grid(grid, 2)
         self.backbone = str(backbone).lower()
@@ -67,10 +75,17 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         # net_mask_shape not needed but kept for legacy reasons
         if backend_channels_last():
             self.net_input_shape = None, None, self.n_channel_in * self.len_t
+            self.attention_axes = (1, 2)
             # self.net_mask_shape = None, None, 1
         else:
             self.net_input_shape = self.n_channel_in * self.len_t, None, None
+            self.attention_axes = (2, 3)
             # self.net_mask_shape = 1, None, None
+
+        self.num_heads_attention = None
+        self.value_dim_attention = None
+        if self.attention_layers > 0:
+            self.num_heads_attention = 8
 
         self.train_shape_completion = False
         self.train_completion_crop = 32
@@ -79,7 +94,16 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         self.train_sample_cache = True
 
         self.train_dist_loss = "mae"
-        self.train_loss_weights = (1, 0.2) if self.n_classes is None else (1, 0.2, 1)
+        if self.n_classes is None:
+            if self.segmentation_by_vectors:
+                self.train_loss_weights: Tuple[float, ...] = (1.0, 1.0, 1.0, 1.0)
+            elif self.tracking:
+                self.train_loss_weights: Tuple[float, ...] = (1.0, 0.2, 1.0, 1.0)
+            else:
+                self.train_loss_weights = (1, 0.2)
+        else:
+            self.train_loss_weights = (1, 0.2, 1)
+
         self.train_class_weights = (
             (1, 1) if self.n_classes is None else (1,) * (self.n_classes + 1)
         )
@@ -100,21 +124,13 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         self.use_gpu = False
 
         # remove derived attributes that shouldn't be overwritten
-        for k in ("n_dim", "n_channel_out"):
+        for k in ("n_dim", "n_channel_out", "output_len_t"):
             try:
                 del kwargs[k]
             except KeyError:
                 pass
 
         self.update_parameters(False, **kwargs)
-
-        # FIXME: put into is_valid()
-        if not len(self.train_loss_weights) == (2 if self.n_classes is None else 3):
-            raise ValueError(
-                f"train_loss_weights {self.train_loss_weights} not compatible "
-                f"with n_classes ({self.n_classes}): must be 3 weights if "
-                "n_classes is not None, otherwise 2"
-            )
 
         if not len(self.train_class_weights) == (
             2 if self.n_classes is None else self.n_classes + 1
@@ -124,3 +140,21 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
                 f"with n_classes ({self.n_classes}): must be 'n_classes + 1' weights "
                 "if n_classes is not None, otherwise 2"
             )
+
+        if not self.predict_all_timepoints and self.tracking:
+            self.output_len_t = 2
+        else:
+            self.output_len_t = self.len_t
+
+        if self.segmentation_by_vectors:
+            self.output_len_t = 1
+            self.n_rays = 5  # makes 6 together with the prob
+            self.tracking = False
+
+        # tensorboard does not work with tracking.
+        if self.tracking:
+            self.train_tensorboard = False
+
+        if self.attention_layers > 0:
+            self.value_dim_attention = self.unet_n_filter_base
+            self.net_conv_after_unet = 0
