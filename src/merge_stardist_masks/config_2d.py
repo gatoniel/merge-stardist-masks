@@ -23,6 +23,8 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         axes: str = "YX",
         n_rays: int = 32,
         len_t: int = 3,
+        tracking: bool = False,
+        predict_all_timepoints: bool = False,
         n_channel_in: int = 1,
         grid: Tuple[int, ...] = (1, 1),
         n_classes: Optional[int] = None,
@@ -40,7 +42,9 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         n_classes is None or _raise(NotImplementedError("n_classes not implemented."))
 
         # directly set by parameters
+        self.tracking = tracking
         self.len_t = len_t
+        self.predict_all_timepoints = predict_all_timepoints
         self.n_rays = int(n_rays)
         self.grid = _normalize_grid(grid, 2)
         self.backbone = str(backbone).lower()
@@ -79,7 +83,14 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         self.train_sample_cache = True
 
         self.train_dist_loss = "mae"
-        self.train_loss_weights = (1, 0.2) if self.n_classes is None else (1, 0.2, 1)
+        if self.n_classes is None:
+            if self.tracking:
+                self.train_loss_weights: Tuple[float, ...] = (1.0, 0.2, 1.0, 1.0)
+            else:
+                self.train_loss_weights = (1, 0.2)
+        else:
+            self.train_loss_weights = (1, 0.2, 1)
+
         self.train_class_weights = (
             (1, 1) if self.n_classes is None else (1,) * (self.n_classes + 1)
         )
@@ -100,21 +111,13 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         self.use_gpu = False
 
         # remove derived attributes that shouldn't be overwritten
-        for k in ("n_dim", "n_channel_out"):
+        for k in ("n_dim", "n_channel_out", "output_len_t"):
             try:
                 del kwargs[k]
             except KeyError:
                 pass
 
         self.update_parameters(False, **kwargs)
-
-        # FIXME: put into is_valid()
-        if not len(self.train_loss_weights) == (2 if self.n_classes is None else 3):
-            raise ValueError(
-                f"train_loss_weights {self.train_loss_weights} not compatible "
-                f"with n_classes ({self.n_classes}): must be 3 weights if "
-                "n_classes is not None, otherwise 2"
-            )
 
         if not len(self.train_class_weights) == (
             2 if self.n_classes is None else self.n_classes + 1
@@ -124,3 +127,12 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
                 f"with n_classes ({self.n_classes}): must be 'n_classes + 1' weights "
                 "if n_classes is not None, otherwise 2"
             )
+
+        # tensorboard does not work with tracking.
+        if self.tracking:
+            self.train_tensorboard = False
+
+        if not self.predict_all_timepoints and self.tracking:
+            self.output_len_t = 2
+        else:
+            self.output_len_t = self.len_t
