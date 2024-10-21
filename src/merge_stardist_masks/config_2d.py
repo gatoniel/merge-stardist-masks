@@ -1,15 +1,16 @@
 """Configuration for 2D stacked time frames modified directly from StarDist."""
+
 from __future__ import annotations
 
 from typing import Optional
 from typing import Tuple
 
-from csbdeep.models import BaseConfig  # type: ignore [import]
-from csbdeep.utils import _raise  # type: ignore [import]
+from csbdeep.models import BaseConfig  # type: ignore [import-untyped]
+from csbdeep.utils import _raise  # type: ignore [import-untyped]
 from csbdeep.utils import backend_channels_last
-from csbdeep.utils.tf import keras_import  # type: ignore [import]
-from distutils.version import LooseVersion
-from stardist.utils import _normalize_grid  # type: ignore [import]
+from csbdeep.utils.tf import keras_import  # type: ignore [import-untyped]
+from distutils.version import LooseVersion  # type: ignore [import-not-found]
+from stardist.utils import _normalize_grid  # type: ignore [import-untyped]
 
 
 keras = keras_import()

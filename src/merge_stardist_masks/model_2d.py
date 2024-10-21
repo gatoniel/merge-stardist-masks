@@ -14,19 +14,19 @@ from unittest.mock import patch
 
 import numpy as np
 import numpy.typing as npt
-import tensorflow as tf  # type: ignore [import]
-from csbdeep.data import Normalizer  # type: ignore [import]
-from csbdeep.internals.blocks import unet_block  # type: ignore [import]
-from csbdeep.internals.predict import tile_iterator  # type: ignore [import]
+import tensorflow as tf  # type: ignore [import-not-found]
+from csbdeep.data import Normalizer  # type: ignore [import-untyped]
+from csbdeep.internals.blocks import unet_block  # type: ignore [import-untyped]
+from csbdeep.internals.predict import tile_iterator  # type: ignore [import-untyped]
 from csbdeep.internals.predict import total_n_tiles
-from csbdeep.utils import _raise  # type: ignore [import]
+from csbdeep.utils import _raise  # type: ignore [import-untyped]
 from csbdeep.utils import axes_dict
-from csbdeep.utils.tf import BACKEND as K
-from csbdeep.utils.tf import CARETensorBoard  # type: ignore [import]
+from csbdeep.utils.tf import BACKEND as K  # type: ignore [import-untyped]
+from csbdeep.utils.tf import CARETensorBoard
 from csbdeep.utils.tf import IS_TF_1
 from csbdeep.utils.tf import keras_import
-from stardist.models import StarDist2D  # type: ignore [import]
-from stardist.models.base import kld  # type: ignore [import]
+from stardist.models import StarDist2D  # type: ignore [import-untyped]
+from stardist.models.base import kld  # type: ignore [import-untyped]
 from stardist.models.base import masked_loss_iou
 from stardist.models.base import masked_loss_mae
 from stardist.models.base import masked_loss_mse
@@ -35,9 +35,9 @@ from stardist.models.base import masked_metric_mae
 from stardist.models.base import masked_metric_mse
 from stardist.models.base import StarDistPadAndCropResizer
 from stardist.models.base import weighted_categorical_crossentropy
-from stardist.utils import _is_floatarray  # type: ignore [import]
-from tensorflow.python.framework.ops import EagerTensor  # type: ignore [import]
-from tqdm import tqdm  # type: ignore [import]
+from stardist.utils import _is_floatarray  # type: ignore [import-untyped]
+from tensorflow.python.framework.ops import EagerTensor  # type: ignore [import-not-found]
+from tqdm import tqdm  # type: ignore [import-untyped]
 
 from .config_2d import StackedTimepointsConfig2D
 from .data_2d import OptimizedStackedTimepointsData2D
@@ -322,7 +322,7 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
     ):
         """Modified version."""
         if n_tiles is None:
-            n_tiles = [1] * img.ndim  # type: ignore [assignment]
+            n_tiles = (1,) * img.ndim
         assert n_tiles is not None
         try:
             n_tiles = tuple(n_tiles)
@@ -331,9 +331,12 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             raise ValueError(
                 "n_tiles must be an iterable of length %d" % img.ndim
             ) from None
-        all(np.isscalar(t) and 1 <= t and int(t) == t for t in n_tiles) or _raise(
-            ValueError("all values of n_tiles must be integer values >= 1")
-        )
+        all(
+            np.isscalar(t)
+            and 1 <= t  # type: ignore [operator]
+            and int(t) == t  # type: ignore [arg-type]
+            for t in n_tiles
+        ) or _raise(ValueError("all values of n_tiles must be integer values >= 1"))
 
         n_tiles = tuple(map(int, n_tiles))
 
@@ -533,25 +536,21 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
 
         # last "yield" is the actual output that would
         # have been "return"ed if this was a regular function
-        yield tuple(result)  # type: ignore [misc]
+        yield tuple(result)
 
     def predict_tyx(
         self, x: npt.NDArray[np.double]
     ) -> Tuple[npt.NDArray[np.double], ...]:
         """Prepare input image of shape TYXC to YXC for internal representation."""
         if x.ndim == 3:
-            x = np.expand_dims(x, axis=-1)  # type: ignore [no-untyped-call]
-        x = np.concatenate(  # type: ignore [no-untyped-call]
-            [x[i] for i in range(self.config.len_t)], axis=-1
-        )
+            x = np.expand_dims(x, axis=-1)
+        x = np.concatenate([x[i] for i in range(self.config.len_t)], axis=-1)
         prob, dists = self.predict(x)
 
         prob = np.transpose(prob, (2, 0, 1))
 
         dists = np.stack(
-            np.split(  # type: ignore [no-untyped-call]
-                dists, self.config.len_t, axis=-1
-            ),
+            np.split(dists, self.config.len_t, axis=-1),
             axis=0,
         )
 
@@ -568,7 +567,7 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
     ) -> List[Tuple[npt.NDArray[np.double], ...]]:
         """Predict on TYXC array."""
         if x_array.ndim == 3:
-            x_array = np.expand_dims(x_array, axis=-1)  # type: ignore [no-untyped-call]
+            x_array = np.expand_dims(x_array, axis=-1)
         return self.predict_tyx_list(timeseries_to_batch(x_array, self.config.len_t))
 
     def _compute_receptive_field(
@@ -576,7 +575,7 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
     ) -> Tuple[Tuple[int, int], ...]:
         """Modified version of original StarDist models."""
         # TODO: good enough?
-        from scipy.ndimage import zoom  # type: ignore [import]
+        from scipy.ndimage import zoom  # type: ignore [import-untyped]
 
         if img_size is None:
             img_size = tuple(
@@ -603,8 +602,7 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         y0 = zoom(y0, grid, order=0)
         ind = np.where(np.abs(y - y0) > 0)
         return tuple(
-            (int(m - np.min(i)), int(np.max(i) - m))  # type: ignore [no-untyped-call]
-            for (m, i) in zip(mid, ind)
+            (int(m - np.min(i)), int(np.max(i) - m)) for (m, i) in zip(mid, ind)
         )
 
     @property

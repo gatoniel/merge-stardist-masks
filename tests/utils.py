@@ -1,4 +1,5 @@
 """Utility functions for testing."""
+
 from typing import Optional
 from typing import Tuple
 
@@ -24,7 +25,7 @@ def circle_image(
         eps = (1,) * len(shape)
     assert len(shape) == len(eps)
     xs_ = tuple(np.arange(s) - s // 2 for s in shape)
-    xs = np.meshgrid(*xs_, indexing="ij")  # type: ignore [no-untyped-call]
+    xs = np.meshgrid(*xs_, indexing="ij")
 
     imgs = []
     for i in range(len_t):
