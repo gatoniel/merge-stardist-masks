@@ -1,33 +1,42 @@
 """Stardist 3D data generator for new weights and probability maps."""
 
-from typing import List
 from typing import Tuple
-from typing import TypeVar
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
-from scipy.ndimage import zoom  # type: ignore [import]
-from stardist.geometry import star_dist3D  # type: ignore [import]
-from stardist.models.model3d import (  # type: ignore [import]
+from scipy.ndimage import zoom  # type: ignore [import-untyped]
+from stardist.geometry import star_dist3D  # type: ignore [import-untyped]
+from stardist.models.model3d import (  # type: ignore [import-untyped]
     StarDistData3D,
 )
-from stardist.sample_patches import (  # type: ignore [import]
+from stardist.sample_patches import (  # type: ignore [import-untyped]
     sample_patches,
 )
-from stardist.utils import edt_prob  # type: ignore [import]
+from stardist.utils import edt_prob  # type: ignore [import-untyped]
 from stardist.utils import mask_to_categorical
 
 from .touching_pixels import bordering_gaussian_weights
 from .touching_pixels import touching_pixels_3d
 
 
-T = TypeVar("T", bound=np.generic)
-
-
 class OptimizedStarDistData3D(StarDistData3D):  # type: ignore [misc]
     """Overwrite __getitem__ function to use different prob and weights."""
 
-    def __getitem__(self, i: int) -> Tuple[List[npt.NDArray[T]], List[npt.NDArray[T]]]:
+    def __getitem__(self, i: int) -> Union[
+        Tuple[
+            Tuple[npt.NDArray[np.float32]],
+            Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]],
+        ],
+        Tuple[
+            Tuple[npt.NDArray[np.float32]],
+            Tuple[
+                npt.NDArray[np.float32],
+                npt.NDArray[np.float32],
+                npt.NDArray[np.float32],
+            ],
+        ],
+    ]:
         """Return batch i as numpy array."""
         idx = self.batch(i)
         arrays = [
@@ -55,11 +64,11 @@ class OptimizedStarDistData3D(StarDistData3D):  # type: ignore [misc]
         xs, ys = tuple(zip(*tuple(self.augmenter(_x, _y) for _x, _y in zip(xs, ys))))
 
         if len(ys) == 1:
-            xs = xs[0][np.newaxis]
+            xs_np = xs[0][np.newaxis]
         else:
-            xs = np.stack(xs, out=self.out_X[: len(ys)])
-        if xs.ndim == 4:  # input image has no channel axis
-            xs = np.expand_dims(xs, -1)  # type: ignore [no-untyped-call]
+            xs_np = np.stack(xs, out=self.out_X[: len(ys)])
+        if xs_np.ndim == 4:  # input image has no channel axis
+            xs_np = np.expand_dims(xs_np, -1)
 
         tmp_prob_ = [
             edt_prob(lbl, anisotropy=self.anisotropy)[self.ss_grid[1:]] for lbl in ys
@@ -89,16 +98,14 @@ class OptimizedStarDistData3D(StarDistData3D):  # type: ignore [misc]
         else:
             dist = np.stack(tmp_dists, out=self.out_star_dist3D[: len(ys)])
 
-        prob = np.expand_dims(prob, -1)  # type: ignore [no-untyped-call]
-        dist_mask = np.expand_dims(dist_mask, -1)  # type: ignore [no-untyped-call]
+        prob_np: npt.NDArray[np.float32] = np.expand_dims(prob, -1)
+        dist_mask = np.expand_dims(dist_mask, -1)
 
         # append dist_mask to dist as additional channel
-        dist = np.concatenate(  # type: ignore [no-untyped-call]
-            [dist, dist_mask], axis=-1
-        )
+        dist_np: npt.NDArray[np.float32] = np.concatenate([dist, dist_mask], axis=-1)
 
         if self.n_classes is None:
-            return (xs), (prob, dist)
+            return (xs_np,), (prob_np, dist_np)
         else:
             tmp = [
                 mask_to_categorical(y, self.n_classes, self.classes[k])
@@ -113,10 +120,10 @@ class OptimizedStarDistData3D(StarDistData3D):  # type: ignore [misc]
             # TODO: investigate downsampling via simple indexing vs. using 'zoom'
             # prob_class = prob_class[self.ss_grid]
             # 'zoom' might lead to better registered maps (especially if upscaled later)
-            prob_class = zoom(
+            prob_class_np: npt.NDArray[np.float32] = zoom(
                 prob_class,
                 (1,) + tuple(1 / g for g in self.grid) + (1,),
                 order=0,
             )
 
-            return (xs), (prob, dist, prob_class)
+            return (xs_np,), (prob_np, dist_np, prob_class_np)
