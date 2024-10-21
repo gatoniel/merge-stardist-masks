@@ -799,7 +799,7 @@ def test_paint_in_without_overlaps_check_probs() -> None:
     np.testing.assert_equal(x[:, 0], np.zeros((3,)))
     np.testing.assert_equal(x[0, :], np.zeros((3,)))
 
-    p_ = np.zeros(shape)
+    p_ = np.zeros(shape, dtype=np.float32)
     p_[1:, 1:] = 0.9
     p_[1, 1] = 0.93
     p_[2, 2] = 0.95
