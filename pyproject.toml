@@ -47,7 +47,7 @@ Pygments = "^2.13.0"
 pyupgrade = "^3.3.0"
 furo = ">=2021.11.12"
 pytest-mock = "^3.10.0"
-tensorflow = "^2.11.1"
+tensorflow = "^2.14.1"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
