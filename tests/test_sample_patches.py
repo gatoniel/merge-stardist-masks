@@ -1,5 +1,4 @@
 """Test the sample_patches."""
-
 import numpy as np
 
 from merge_stardist_masks.sample_patches import sample_patches

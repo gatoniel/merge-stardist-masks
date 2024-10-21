@@ -1,5 +1,4 @@
 """Functions to calculate optimized prob maps and distance weights."""
-
 from __future__ import annotations
 
 from typing import Any

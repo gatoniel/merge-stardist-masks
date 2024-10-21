@@ -1,5 +1,4 @@
 """Functions to directly predict instances on timeseries data."""
-
 from __future__ import annotations
 
 from typing import TypeVar

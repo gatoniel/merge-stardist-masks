@@ -1,5 +1,4 @@
 """Test the functions to determine the touching pixels of neighboring objects."""
-
 from unittest import mock
 
 import numpy as np

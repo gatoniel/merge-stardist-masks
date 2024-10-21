@@ -1,5 +1,4 @@
 """Base data generator for time stacks based on stardist's data generators."""
-
 from __future__ import annotations
 
 import threading

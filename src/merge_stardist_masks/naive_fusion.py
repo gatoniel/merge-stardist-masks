@@ -1,5 +1,4 @@
 """Naively merge all masks that have sufficient overlap and probability."""
-
 from __future__ import annotations
 
 import warnings

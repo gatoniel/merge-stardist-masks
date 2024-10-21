@@ -1,5 +1,4 @@
 """Utility functions for testing."""
-
 from typing import Optional
 from typing import Tuple
 

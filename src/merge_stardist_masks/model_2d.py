@@ -1,5 +1,4 @@
 """Stardist 2D model modified for stacked timepoints."""
-
 from __future__ import annotations
 
 import warnings
