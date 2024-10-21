@@ -152,12 +152,8 @@ def safety(session: Session) -> None:
         "check",
         "--full-report",
         f"--file={requirements}",
-        # ignore numpy safety issues
-        "--ignore=44715",
-        "--ignore=44716",
-        "--ignore=44717",
-        # ignore a tornado safety issue
-        "--ignore=59071",
+        # ignore a jinja2 safety issue
+        "--ignore=70612",
     )
 
 
