@@ -1,4 +1,5 @@
 """Naively merge all masks that have sufficient overlap and probability."""
+
 from __future__ import annotations
 
 import warnings
@@ -11,10 +12,10 @@ from typing import Union
 
 import numpy as np
 import numpy.typing as npt
-from stardist.geometry.geom2d import polygons_to_label  # type: ignore [import]
-from stardist.geometry.geom3d import polyhedron_to_label  # type: ignore [import]
-from stardist.rays3d import Rays_Base  # type: ignore [import]
-from stardist.utils import _normalize_grid  # type: ignore [import]
+from stardist.geometry.geom2d import polygons_to_label  # type: ignore [import-untyped]
+from stardist.geometry.geom3d import polyhedron_to_label  # type: ignore [import-untyped]
+from stardist.rays3d import Rays_Base  # type: ignore [import-untyped]
+from stardist.utils import _normalize_grid  # type: ignore [import-untyped]
 
 
 T = TypeVar("T", bound=np.generic)
@@ -24,7 +25,7 @@ ArrayLike = npt.ArrayLike
 def mesh_from_shape(shape: Tuple[int, ...]) -> npt.NDArray[np.int_]:
     """Convenience function to generate a mesh."""
     offsets = [np.arange(s) for s in shape]
-    mesh = np.meshgrid(*offsets, indexing="ij")  # type: ignore [no-untyped-call]
+    mesh = np.meshgrid(*offsets, indexing="ij")
     return np.stack(mesh, axis=-1)
 
 
@@ -43,52 +44,52 @@ def my_polyhedron_to_label(
     rays: Rays_Base, dists: ArrayLike, points: ArrayLike, shape: Tuple[int, ...]
 ) -> npt.NDArray[np.int_]:
     """Convenience funtion to pass 1-d arrays to polyhedron_to_label."""
-    return polyhedron_to_label(  # type: ignore [no-any-return]
-        np.expand_dims(  # type: ignore [no-untyped-call]
-            np.clip(dists, 1e-3, None), axis=0
-        ),
-        np.expand_dims(points, axis=0),  # type: ignore [no-untyped-call]
+    x: npt.NDArray[np.int_] = polyhedron_to_label(
+        np.expand_dims(np.clip(dists, 1e-3, None), axis=0),
+        np.expand_dims(points, axis=0),
         rays,
         shape,
         verbose=False,
     )
+    return x
 
 
 def my_polyhedron_list_to_label(
     rays: Rays_Base, dists: ArrayLike, points: ArrayLike, shape: Tuple[int, ...]
 ) -> npt.NDArray[np.int_]:
     """Convenience funtion to pass 1-d arrays to polyhedron_to_label."""
-    return polyhedron_to_label(  # type: ignore [no-any-return]
+    x: npt.NDArray[np.int_] = polyhedron_to_label(
         np.clip(np.array(dists), 1e-3, None),
         np.array(points),
         rays,
         shape,
         verbose=False,
     )
+    return x
 
 
 def my_polygons_to_label(
     dists: ArrayLike, points: ArrayLike, shape: Tuple[int, ...]
 ) -> npt.NDArray[np.int_]:
     """Convenience funtion to pass 1-d arrays to polygons_to_label."""
-    return polygons_to_label(  # type: ignore [no-any-return]
-        np.expand_dims(  # type: ignore [no-untyped-call]
-            np.clip(dists, 1e-3, None), axis=0
-        ),
-        np.expand_dims(points, axis=0),  # type: ignore [no-untyped-call]
+    x: npt.NDArray[np.int_] = polygons_to_label(
+        np.expand_dims(np.clip(dists, 1e-3, None), axis=0),
+        np.expand_dims(points, axis=0),
         shape,
     )
+    return x
 
 
 def my_polygons_list_to_label(
     dists: ArrayLike, points: ArrayLike, shape: Tuple[int, ...]
 ) -> npt.NDArray[np.int_]:
     """Convenience funtion to pass 1-d arrays to polygons_to_label."""
-    return polygons_to_label(  # type: ignore [no-any-return]
+    x: npt.NDArray[np.int_] = polygons_to_label(
         np.clip(np.array(dists), 1e-3, None),
         np.array(points),
         shape,
     )
+    return x
 
 
 PolyToLabelSignature = Callable[
@@ -174,7 +175,9 @@ def no_slicing_slice_point(point: ArrayLike, max_dist: int) -> SlicePointReturn:
 
 
 def inflate_array(
-    x: npt.NDArray[T], grid: Tuple[int, ...], default_value: Union[int, float] = 0
+    x: npt.NDArray[T],
+    grid: Tuple[int, ...],
+    default_value: Union[int, float] = 0,
 ) -> npt.NDArray[T]:
     """Create new array with increased shape but old values of x."""
     if x.ndim < len(grid):
@@ -300,7 +303,7 @@ def naive_fusion(
         >>> rays = rays_from_json(model.config.rays_json)
         >>> lbl = naive_fusion(dists, probs, rays, grid=model.config.grid)
     """
-    if len(np.unique(grid)) == 1:  # type: ignore [no-untyped-call]
+    if len(np.unique(grid)) == 1:
         return naive_fusion_isotropic_grid(
             dists,
             probs,
@@ -387,7 +390,7 @@ def naive_fusion_isotropic_grid(
         >>> grid = model.config.grid[0]
         >>> lbl = naive_fusion_isotropic_grid(dists, probs, rays, grid=grid)
     """
-    new_probs = np.copy(probs)  # type: ignore [no-untyped-call]
+    new_probs = np.copy(probs)
     shape = new_probs.shape
 
     poly_to_label = get_poly_to_label(shape, rays)
@@ -398,7 +401,7 @@ def naive_fusion_isotropic_grid(
     inds_thresh = new_probs > prob_thresh
     sum_thresh = np.sum(inds_thresh)
 
-    prob_sort = np.argsort(new_probs, axis=None)[::-1][:sum_thresh]
+    prob_sort = np.argsort(new_probs, axis=None)[::-1][: int(sum_thresh)]
 
     big_shape = tuple(s * grid for s in shape)
 
@@ -431,9 +434,7 @@ def naive_fusion_isotropic_grid(
     sorted_probs_j = 0
     current_id = 1
     while True:
-        newly_sorted_probs = np.take_along_axis(  # type: ignore [no-untyped-call]
-            new_probs, prob_sort, axis=None
-        )
+        newly_sorted_probs = np.take_along_axis(new_probs, prob_sort, axis=None)
 
         while sorted_probs_j < sum_thresh:
             if newly_sorted_probs[sorted_probs_j] > 0:
@@ -639,7 +640,7 @@ def naive_fusion_anisotropic_grid(
     inds_thresh: npt.NDArray[np.bool_] = new_probs > prob_thresh
     sum_thresh = np.sum(inds_thresh)
 
-    prob_sort = np.argsort(new_probs, axis=None)[::-1][:sum_thresh]
+    prob_sort = np.argsort(new_probs, axis=None)[::-1][: int(sum_thresh)]
 
     if no_slicing:
         this_slice_point = no_slicing_slice_point
@@ -666,9 +667,7 @@ def naive_fusion_anisotropic_grid(
     while True:
         # In case this is always a view of new_probs that changes when new_probs changes
         # this line should be placed outside of this while-loop.
-        newly_sorted_probs = np.take_along_axis(  # type: ignore [no-untyped-call]
-            new_probs, prob_sort, axis=None
-        )
+        newly_sorted_probs = np.take_along_axis(new_probs, prob_sort, axis=None)
 
         while sorted_probs_j < sum_thresh:
             if newly_sorted_probs[sorted_probs_j] > 0:
@@ -760,7 +759,10 @@ def naive_fusion_anisotropic_grid(
         new_probs[slices] = current_probs
 
         if respect_probs:
-            lbl[slices], old_probs[slices] = paint_in_without_overlaps_check_probs(
+            (
+                lbl[slices],
+                old_probs[slices],
+            ) = paint_in_without_overlaps_check_probs(
                 lbl[slices],
                 new_shape,
                 old_probs[slices],
