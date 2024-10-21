@@ -23,8 +23,8 @@ def test_star_dist_timeseries() -> None:
     y = t2d.star_dist_timeseries(x, 8, "cpp", (2, 2))
 
     assert y.shape == (8, 8, 24)
-    np.testing.assert_equal(y[..., :8], y[..., 8:16])  # type: ignore [no-untyped-call]
-    np.testing.assert_equal(y[..., :8], y[..., -8:])  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(y[..., :8], y[..., 8:16])
+    np.testing.assert_equal(y[..., :8], y[..., -8:])
 
 
 def test_edt_prob_timeseries() -> None:
@@ -35,8 +35,8 @@ def test_edt_prob_timeseries() -> None:
     y = t2d.edt_prob_timeseries(x, b, ss_grid)
 
     assert y.shape == (8, 8, 3)
-    np.testing.assert_equal(y[..., 0], y[..., 1])  # type: ignore [no-untyped-call]
-    np.testing.assert_equal(y[..., 0], y[..., 2])  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(y[..., 0], y[..., 1])
+    np.testing.assert_equal(y[..., 0], y[..., 2])
 
 
 def test_touching_pixels_2d_timeseries() -> None:
@@ -51,8 +51,8 @@ def test_touching_pixels_2d_timeseries() -> None:
     print(y[..., -1])
 
     assert y.shape == (8, 8, 3)
-    np.testing.assert_equal(y[..., 0], y[..., 1])  # type: ignore [no-untyped-call]
-    np.testing.assert_equal(y[..., 0], y[..., 2])  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(y[..., 0], y[..., 1])
+    np.testing.assert_equal(y[..., 0], y[..., 2])
 
 
 def test_bordering_gaussian_weights_timeseries() -> None:
@@ -69,5 +69,5 @@ def test_bordering_gaussian_weights_timeseries() -> None:
     y = t2d.bordering_gaussian_weights_timeseries(y_, x, 2, b, ss_grid)
 
     assert y.shape == (8, 8, 3)
-    np.testing.assert_equal(y[..., 0], y[..., 1])  # type: ignore [no-untyped-call]
-    np.testing.assert_equal(y[..., 0], y[..., 2])  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(y[..., 0], y[..., 1])
+    np.testing.assert_equal(y[..., 0], y[..., 2])

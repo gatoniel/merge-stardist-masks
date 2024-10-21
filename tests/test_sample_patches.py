@@ -11,8 +11,8 @@ def test_sample_patches() -> None:
     y = np.zeros(shape, dtype=np.uint8)
     y[:, 4:8, 4:8] = 1
 
-    x, y = sample_patches((y, x), patch_size=(8, 8), n_samples=1)
+    x1, y1 = sample_patches((y, x), patch_size=(8, 8), n_samples=1)
 
-    print(x.shape, y.shape)
+    print(x1.shape, y1.shape)
 
-    assert x.shape == y.shape
+    assert x1.shape == y1.shape

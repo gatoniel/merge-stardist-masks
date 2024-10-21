@@ -1,7 +1,9 @@
 """Modification of stardist.sample_patches for timestacks."""
 from __future__ import annotations
 
+from typing import Any
 from typing import TypeVar
+from typing import Unpack
 
 import numpy as np
 import numpy.typing as npt
@@ -10,15 +12,16 @@ from csbdeep.utils import choice
 
 
 T = TypeVar("T", bound=np.generic)
+U = TypeVar("U", bound=np.unsignedinteger[Any])
 
 
 def sample_patches(
-    datas: tuple[npt.NDArray[T], ...],
+    datas: tuple[npt.NDArray[U], Unpack[tuple[npt.NDArray[T], ...]]],
     patch_size: tuple[int, ...],
     n_samples: int,
     valid_inds: tuple[npt.NDArray[np.uint32], ...] | None = None,
     verbose: bool = False,
-) -> list[npt.NDArray[T]]:
+) -> tuple[npt.NDArray[U], Unpack[tuple[npt.NDArray[T], ...]]]:
     """Version of stardist.sample_patches.sample_patches for time stacks."""
     len(patch_size) == datas[0].ndim - 1 or _raise(ValueError())
 
@@ -37,7 +40,7 @@ def sample_patches(
     if valid_inds is None:
         valid_inds = tuple(
             _s.ravel()
-            for _s in np.meshgrid(  # type: ignore [no-untyped-call]
+            for _s in np.meshgrid(
                 *tuple(
                     np.arange(p // 2, s - p // 2 + 1)
                     for s, p in zip(datas[0].shape[1:], patch_size)
@@ -52,7 +55,7 @@ def sample_patches(
 
     idx = choice(range(n_valid), n_samples, replace=(n_valid < n_samples))
     rand_inds = [v[idx] for v in valid_inds]
-    res = [
+    res = tuple(
         np.stack(
             [
                 data[
@@ -66,6 +69,6 @@ def sample_patches(
             ]
         )
         for data in datas
-    ]
+    )
 
     return res

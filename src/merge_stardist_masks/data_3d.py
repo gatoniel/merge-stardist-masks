@@ -58,7 +58,7 @@ class OptimizedStarDistData3D(StarDistData3D):  # type: ignore [misc]
         else:
             xs = np.stack(xs, out=self.out_X[: len(ys)])
         if xs.ndim == 4:  # input image has no channel axis
-            xs = np.expand_dims(xs, -1)  # type: ignore [no-untyped-call]
+            xs = np.expand_dims(xs, -1)
 
         tmp_prob_ = [
             edt_prob(lbl, anisotropy=self.anisotropy)[self.ss_grid[1:]] for lbl in ys
@@ -88,13 +88,11 @@ class OptimizedStarDistData3D(StarDistData3D):  # type: ignore [misc]
         else:
             dist = np.stack(tmp_dists, out=self.out_star_dist3D[: len(ys)])
 
-        prob = np.expand_dims(prob, -1)  # type: ignore [no-untyped-call]
-        dist_mask = np.expand_dims(dist_mask, -1)  # type: ignore [no-untyped-call]
+        prob = np.expand_dims(prob, -1)
+        dist_mask = np.expand_dims(dist_mask, -1)
 
         # append dist_mask to dist as additional channel
-        dist = np.concatenate(  # type: ignore [no-untyped-call]
-            [dist, dist_mask], axis=-1
-        )
+        dist = np.concatenate([dist, dist_mask], axis=-1)
 
         if self.n_classes is None:
             return [xs], [prob, dist]
