@@ -1,6 +1,7 @@
 """Data generator for 2d time stacks based on stardist's data generators."""
 from __future__ import annotations
 
+from typing import Any
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -18,6 +19,7 @@ from .timeseries_2d import star_dist_timeseries
 from .timeseries_2d import touching_pixels_2d_timeseries
 
 T = TypeVar("T", bound=np.generic)
+U = TypeVar("U", bound=np.unsignedinteger[Any])
 
 
 class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
@@ -26,7 +28,7 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
     def __init__(
         self,
         xs: List[npt.NDArray[T]],
-        ys: List[npt.NDArray[T]],
+        ys: List[npt.NDArray[U]],
         batch_size: int,
         n_rays: int,
         length: int,
@@ -70,7 +72,7 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
 
     def __getitem__(
         self, i: int
-    ) -> Tuple[List[npt.NDArray[np.double]], List[npt.NDArray[np.double]],]:
+    ) -> Tuple[List[npt.NDArray[np.double]], List[npt.NDArray[np.single]]]:
         """Return batch i as numpy array."""
         idx = self.batch(i)
         arrays = [
@@ -122,16 +124,9 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         )
 
         if xs[0].ndim == 3:
-            xs = [
-                np.expand_dims(x, axis=-1) for x in xs  # type: ignore [no-untyped-call]
-            ]
+            xs = [np.expand_dims(x, axis=-1) for x in xs]
         xs = np.stack(
-            [
-                np.concatenate(  # type: ignore [no-untyped-call]
-                    [x[i] for i in range(self.len_t)], axis=-1
-                )
-                for x in xs
-            ]
+            [np.concatenate([x[i] for i in range(self.len_t)], axis=-1) for x in xs]
         )
 
         # append dist_mask to dist as additional channel

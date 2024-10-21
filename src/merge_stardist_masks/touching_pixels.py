@@ -1,11 +1,18 @@
 """Functions to calculate optimized prob maps and distance weights."""
+
 from __future__ import annotations
+
+from typing import Any
+from typing import TypeVar
 
 import numba  # type: ignore [import]
 import numpy as np
 import numpy.typing as npt
 from edt import edt  # type: ignore [import]
 from numba import njit
+
+U = TypeVar("U", bound=np.unsignedinteger[Any])
+F = TypeVar("F", bound=np.floating[Any])
 
 
 @njit  # type: ignore [misc]
@@ -14,7 +21,7 @@ def determine_neighbor_2d(
     off_y: int,
     x: int,
     off_x: int,
-    lbl: npt.NDArray[np.int_],
+    lbl: npt.NDArray[U],
     mask: npt.NDArray[np.bool_],
     bordering: npt.NDArray[np.bool_],
 ) -> None:
@@ -31,7 +38,7 @@ def determine_neighbors_2d(
     y: int,
     x: int,
     offsets: npt.NDArray[np.int_],
-    lbl: npt.NDArray[np.int_],
+    lbl: npt.NDArray[U],
     mask: npt.NDArray[np.bool_],
     bordering: npt.NDArray[np.bool_],
 ) -> None:
@@ -44,7 +51,7 @@ def determine_neighbors_2d(
 
 @njit  # type: ignore [misc]
 def touching_pixels_2d_helper(
-    lbl: npt.NDArray[np.int_],
+    lbl: npt.NDArray[U],
     mask: npt.NDArray[np.bool_],
     bordering: npt.NDArray[np.bool_],
 ) -> None:
@@ -73,7 +80,7 @@ def touching_pixels_2d_helper(
 
 
 @njit  # type: ignore [misc]
-def touching_pixels_2d(lbl: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
+def touching_pixels_2d(lbl: npt.NDArray[U]) -> npt.NDArray[np.bool_]:
     """Calculate the pixels of objects that touch other objects in 2D."""
     bordering = np.zeros(lbl.shape, dtype=numba.types.bool_)
     touching_pixels_2d_helper(lbl, lbl > 0, bordering)
@@ -81,7 +88,7 @@ def touching_pixels_2d(lbl: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
 
 
 @njit  # type: ignore [misc]
-def touching_pixels_3d(lbl: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
+def touching_pixels_3d(lbl: npt.NDArray[U]) -> npt.NDArray[np.bool_]:
     """Calculate the pixels of objects that touch other objects in 3D."""
     all_offsets = np.array(
         [
@@ -250,7 +257,7 @@ def determine_neighbor_3d(
     off_y: int,
     x: int,
     off_x: int,
-    lbl: npt.NDArray[np.int_],
+    lbl: npt.NDArray[U],
     mask: npt.NDArray[np.bool_],
     bordering: npt.NDArray[np.bool_],
 ) -> None:
@@ -269,7 +276,7 @@ def determine_neighbors_3d(
     y: int,
     x: int,
     offsets: npt.NDArray[np.int_],
-    lbl: npt.NDArray[np.int_],
+    lbl: npt.NDArray[U],
     mask: npt.NDArray[np.bool_],
     bordering: npt.NDArray[np.bool_],
 ) -> None:
@@ -281,11 +288,13 @@ def determine_neighbors_3d(
 
 
 def bordering_gaussian_weights(
-    border_pixels: npt.NDArray[np.bool_], lbl: npt.NDArray[np.int_], sigma: int = 2
+    border_pixels: npt.NDArray[np.bool_],
+    lbl: npt.NDArray[U],
+    sigma: int = 2,
 ) -> npt.NDArray[np.single]:
     """Gaussian of edt from border_pixels only for pixels with lbl > 0."""
     bordering_edt = edt(np.logical_not(border_pixels))
-    bordering_weight = np.zeros_like(lbl, dtype=float)
+    bordering_weight = np.zeros_like(lbl, dtype=np.single)
     _mask: npt.NDArray[np.bool_] = lbl > 0
     bordering_weight[_mask] = np.exp(-np.square(bordering_edt[_mask]) / 2 / sigma**2)
 

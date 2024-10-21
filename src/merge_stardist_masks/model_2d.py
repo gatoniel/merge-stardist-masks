@@ -1,4 +1,5 @@
 """Stardist 2D model modified for stacked timepoints."""
+
 from __future__ import annotations
 
 import warnings
@@ -274,9 +275,10 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
     def train(
         self,
         x: List[npt.NDArray[np.double]],
-        y: List[npt.NDArray[np.int_]],
+        # y: List[npt.NDArray[np.unsignedinteger]],  # TODO: why does this not work?
+        y: List[npt.NDArray[np.ushort]],
         validation_data: Tuple[
-            List[npt.NDArray[np.double]], List[npt.NDArray[np.int_]]
+            List[npt.NDArray[np.double]], List[npt.NDArray[np.ushort]]
         ],
         classes: str = "auto",
         augmenter: Optional[AugmenterSignature[T]] = None,
@@ -312,20 +314,19 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
     ):
         """Modified version."""
         if n_tiles is None:
-            n_tiles = [1] * img.ndim  # type: ignore [assignment]
-        assert n_tiles is not None
+            n_tiles = (1) * img.ndim  # type: ignore [assignment]
+        # assert n_tiles is not None  # needed for mypy to get rid of Optional wrapper
+        assert isinstance(n_tiles, tuple)
+
         try:
-            n_tiles = tuple(n_tiles)
             img.ndim == len(n_tiles) or _raise(TypeError())
         except TypeError:
             raise ValueError(
                 "n_tiles must be an iterable of length %d" % img.ndim
             ) from None
-        all(np.isscalar(t) and 1 <= t and int(t) == t for t in n_tiles) or _raise(
+        all(np.isscalar(t) and (1 <= t) and (int(t) == t) for t in n_tiles) or _raise(
             ValueError("all values of n_tiles must be integer values >= 1")
         )
-
-        n_tiles = tuple(map(int, n_tiles))
 
         axes = self._normalize_axes(img, axes)
         axes_net = self.config.axes
@@ -524,18 +525,14 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
     ) -> Tuple[npt.NDArray[np.double], ...]:
         """Prepare input image of shape TYXC to YXC for internal representation."""
         if x.ndim == 3:
-            x = np.expand_dims(x, axis=-1)  # type: ignore [no-untyped-call]
-        x = np.concatenate(  # type: ignore [no-untyped-call]
-            [x[i] for i in range(self.config.len_t)], axis=-1
-        )
+            x = np.expand_dims(x, axis=-1)
+        x = np.concatenate([x[i] for i in range(self.config.len_t)], axis=-1)
         prob, dists = self.predict(x)
 
         prob = np.transpose(prob, (2, 0, 1))
 
         dists = np.stack(
-            np.split(  # type: ignore [no-untyped-call]
-                dists, self.config.len_t, axis=-1
-            ),
+            np.split(dists, self.config.len_t, axis=-1),
             axis=0,
         )
 
@@ -552,7 +549,7 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
     ) -> List[Tuple[npt.NDArray[np.double], ...]]:
         """Predict on TYXC array."""
         if x_array.ndim == 3:
-            x_array = np.expand_dims(x_array, axis=-1)  # type: ignore [no-untyped-call]
+            x_array = np.expand_dims(x_array, axis=-1)
         return self.predict_tyx_list(timeseries_to_batch(x_array, self.config.len_t))
 
     def _compute_receptive_field(
@@ -587,8 +584,7 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
         y0 = zoom(y0, grid, order=0)
         ind = np.where(np.abs(y - y0) > 0)
         return tuple(
-            (int(m - np.min(i)), int(np.max(i) - m))  # type: ignore [no-untyped-call]
-            for (m, i) in zip(mid, ind)
+            (int(m - np.min(i)), int(np.max(i) - m)) for (m, i) in zip(mid, ind)
         )
 
     @property

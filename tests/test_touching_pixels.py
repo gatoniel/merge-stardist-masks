@@ -1,4 +1,5 @@
 """Test the functions to determine the touching pixels of neighboring objects."""
+
 from unittest import mock
 
 import numpy as np
@@ -13,7 +14,7 @@ def slow_correct_touching_pixels(lbl: npt.NDArray[np.int_]) -> npt.NDArray[np.bo
     """Slow but correct way to determine the touching pixels in 2d/3d label images."""
     struct = generate_binary_structure(lbl.ndim, lbl.ndim)
     mask: npt.NDArray[np.bool_] = lbl > 0
-    lbl_ids = np.unique(lbl[mask])  # type: ignore [no-untyped-call]
+    lbl_ids = np.unique(lbl[mask])
     expanded = np.zeros(lbl.shape, dtype=bool)
     for lbl_id in lbl_ids:
         mask_ = lbl == lbl_id
@@ -35,22 +36,16 @@ def test_touching_pixels_2d() -> None:
     correct_touching_pixels = slow_correct_touching_pixels(lbl)
     fast_touching_pixels = tp.touching_pixels_2d(lbl)
 
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        correct_touching_pixels, fast_touching_pixels
-    )
+    np.testing.assert_equal(correct_touching_pixels, fast_touching_pixels)
 
     with mock.patch("merge_stardist_masks.touching_pixels.numba.types.bool_", np.bool_):
         py_func_fast_touching_pixels = tp.touching_pixels_2d.py_func(lbl)
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        correct_touching_pixels, py_func_fast_touching_pixels
-    )
+    np.testing.assert_equal(correct_touching_pixels, py_func_fast_touching_pixels)
 
     mask: npt.NDArray[np.bool_] = lbl > 0
     bordering = np.zeros_like(mask)
     tp.touching_pixels_2d_helper.py_func(lbl, mask, bordering)
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        correct_touching_pixels, bordering
-    )
+    np.testing.assert_equal(correct_touching_pixels, bordering)
 
 
 def test_touching_pixels_3d() -> None:
@@ -64,15 +59,11 @@ def test_touching_pixels_3d() -> None:
     correct_touching_pixels = slow_correct_touching_pixels(lbl)
     fast_touching_pixels = tp.touching_pixels_3d(lbl)
 
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        correct_touching_pixels, fast_touching_pixels
-    )
+    np.testing.assert_equal(correct_touching_pixels, fast_touching_pixels)
 
     with mock.patch("merge_stardist_masks.touching_pixels.numba.types.bool_", np.bool_):
         py_func_fast_touching_pixels = tp.touching_pixels_3d.py_func(lbl)
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        correct_touching_pixels, py_func_fast_touching_pixels
-    )
+    np.testing.assert_equal(correct_touching_pixels, py_func_fast_touching_pixels)
 
 
 def test_determine_neighbor_2d() -> None:
@@ -84,7 +75,7 @@ def test_determine_neighbor_2d() -> None:
     bordering = np.zeros_like(mask)
     tp.determine_neighbor_2d.py_func(1, 1, 1, 1, lbl, mask, bordering)
     tp.determine_neighbor_2d.py_func(1, 0, 1, 1, lbl, mask, bordering)
-    np.testing.assert_equal(bordering, mask)  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(bordering, mask)
 
 
 def test_determine_neighbor_3d() -> None:
@@ -96,7 +87,7 @@ def test_determine_neighbor_3d() -> None:
     bordering = np.zeros_like(mask)
     tp.determine_neighbor_3d.py_func(1, 1, 1, 1, 1, 1, lbl, mask, bordering)
     tp.determine_neighbor_3d.py_func(1, 0, 1, 1, 1, 1, lbl, mask, bordering)
-    np.testing.assert_equal(bordering, mask)  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(bordering, mask)
 
 
 def test_determine_neighbors_2d() -> None:
@@ -109,7 +100,7 @@ def test_determine_neighbors_2d() -> None:
     offsets = np.array([[1, 1], [0, 1]])
     tp.determine_neighbors_2d.py_func(1, 1, offsets, lbl, mask, bordering)
     tp.determine_neighbors_2d.py_func(0, 1, offsets, lbl, mask, bordering)
-    np.testing.assert_equal(bordering, mask)  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(bordering, mask)
 
 
 def test_determine_neighbors_3d() -> None:
@@ -122,7 +113,7 @@ def test_determine_neighbors_3d() -> None:
     offsets = np.array([[1, 1, 1], [0, 1, 1]])
     tp.determine_neighbors_3d.py_func(1, 1, 1, offsets, lbl, mask, bordering)
     tp.determine_neighbors_3d.py_func(0, 1, 1, offsets, lbl, mask, bordering)
-    np.testing.assert_equal(bordering, mask)  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(bordering, mask)
 
 
 def test_bordering_gaussian_weights() -> None:

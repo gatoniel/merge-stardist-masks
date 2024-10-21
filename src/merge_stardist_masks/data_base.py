@@ -1,8 +1,10 @@
 """Base data generator for time stacks based on stardist's data generators."""
+
 from __future__ import annotations
 
 import threading
 import warnings
+from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import List
@@ -17,6 +19,7 @@ from csbdeep.utils import _raise  # type: ignore [import]
 from stardist.sample_patches import get_valid_inds  # type: ignore [import]
 
 T = TypeVar("T", bound=np.generic)
+U = TypeVar("U", bound=np.unsignedinteger[Any])
 
 
 AugmenterSignature = Callable[
@@ -37,7 +40,7 @@ class StackedTimepointsDataBase(RollingSequence):  # type: ignore [misc]
     def __init__(
         self,
         xs: List[npt.NDArray[T]],
-        ys: List[npt.NDArray[T]],
+        ys: List[npt.NDArray[U]],
         n_rays: int,
         grid: Tuple[int, ...],
         batch_size: int,
@@ -53,7 +56,10 @@ class StackedTimepointsDataBase(RollingSequence):  # type: ignore [misc]
     ) -> None:
         """Initialize with appropriately shaped arrays."""
         super().__init__(
-            data_size=len(xs), batch_size=batch_size, length=length, shuffle=True
+            data_size=len(xs),
+            batch_size=batch_size,
+            length=length,
+            shuffle=True,
         )
         n_classes is None or _raise(NotImplementedError("n_classes is not implemented"))
 
@@ -94,9 +100,7 @@ class StackedTimepointsDataBase(RollingSequence):  # type: ignore [misc]
         )
 
         if x_ndim == patch_ndim + 1:
-            xs = [
-                np.expand_dims(x, axis=-1) for x in xs  # type: ignore [no-untyped-call]
-            ]
+            xs = [np.expand_dims(x, axis=-1) for x in xs]
             x_ndim = xs[0].ndim
 
         if isinstance(xs, (np.ndarray, tuple, list)) and isinstance(
@@ -196,7 +200,9 @@ class StackedTimepointsDataBase(RollingSequence):  # type: ignore [misc]
                 else None
             )
             inds = get_valid_inds(
-                self.ys[k][self.mid_t], self.patch_size, patch_filter=patch_filter
+                self.ys[k][self.mid_t],
+                self.patch_size,
+                patch_filter=patch_filter,
             )
             if self.sample_ind_cache:
                 with self.lock:
