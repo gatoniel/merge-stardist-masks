@@ -9,7 +9,7 @@ from csbdeep.models import BaseConfig  # type: ignore [import-untyped]
 from csbdeep.utils import _raise  # type: ignore [import-untyped]
 from csbdeep.utils import backend_channels_last
 from csbdeep.utils.tf import keras_import  # type: ignore [import-untyped]
-from distutils.version import LooseVersion  # type: ignore [import-not-found]
+from packaging.version import Version
 from stardist.utils import _normalize_grid  # type: ignore [import-untyped]
 
 
@@ -92,9 +92,7 @@ class StackedTimepointsConfig2D(BaseConfig):  # type: ignore [misc]
         self.train_tensorboard = True
         # the parameter 'min_delta' was called 'epsilon' for keras<=2.1.5
         min_delta_key = (
-            "epsilon"
-            if LooseVersion(keras.__version__) <= LooseVersion("2.1.5")
-            else "min_delta"
+            "epsilon" if Version(keras.__version__) <= Version("2.1.5") else "min_delta"
         )
         self.train_reduce_lr = {"factor": 0.5, "patience": 40, min_delta_key: 0}
 
