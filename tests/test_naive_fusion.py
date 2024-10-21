@@ -1,13 +1,14 @@
 """Test the naive_fusion implementations."""
+
 from typing import Tuple
 
 import numpy as np
 import numpy.typing as npt
 import pytest
 from pytest import FixtureRequest
-from stardist.geometry.geom2d import polygons_to_label  # type: ignore [import]
-from stardist.geometry.geom3d import polyhedron_to_label  # type: ignore [import]
-from stardist.rays3d import Rays_GoldenSpiral  # type: ignore [import]
+from stardist.geometry.geom2d import polygons_to_label  # type: ignore [import-untyped]
+from stardist.geometry.geom3d import polyhedron_to_label  # type: ignore [import-untyped]
+from stardist.rays3d import Rays_GoldenSpiral  # type: ignore [import-untyped]
 
 from merge_stardist_masks import naive_fusion as nf
 
@@ -96,9 +97,7 @@ def test_values_of_points_from_grid(shape: IntTuple, grid: IntTuple) -> None:
     points = nf.points_from_grid(shape, grid)
     mesh = nf.mesh_from_shape(shape)
 
-    np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
-        mesh * np.array(grid), points
-    )
+    np.testing.assert_array_equal(mesh * np.array(grid), points)
 
 
 def test_value_error_of_points_from_grid() -> None:
@@ -137,16 +136,12 @@ def test_values_of_inflate_array(
         slices_list.append(slice(None))
     slices = tuple(slices_list)
     # first test if values at grid points are correct
-    np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
-        inflated_array[slices], x
-    )
+    np.testing.assert_array_equal(inflated_array[slices], x)
 
     # then test if default values are correct
     inds = np.ones_like(inflated_array, dtype=bool)
     inds[slices] = False
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        inflated_array[inds], default_value
-    )
+    np.testing.assert_equal(inflated_array[inds], default_value)
 
 
 def test_value_error_of_inflate_array() -> None:
@@ -182,8 +177,8 @@ def test_len_and_types_of_outputs_in_slice_point(
     assert len(slices) == len(point)
     assert len(centered_point) == len(point)
 
-    assert type(slices) == tuple
-    assert type(slices[0]) == slice
+    assert isinstance(slices, tuple)
+    assert isinstance(slices[0], slice)
 
 
 def test_values_of_slice_point(
@@ -213,16 +208,14 @@ def test_my_polyhedron_to_label() -> None:
     assert my_label.shape == shape
 
     label = polyhedron_to_label(
-        np.expand_dims(  # type: ignore [no-untyped-call]
-            np.clip(dists, 1e-3, None), axis=0
-        ),
-        np.expand_dims(points, axis=0),  # type: ignore [no-untyped-call]
+        np.expand_dims(np.clip(dists, 1e-3, None), axis=0),
+        np.expand_dims(points, axis=0),
         rays,
         shape,
         verbose=False,
     )
 
-    np.testing.assert_array_equal(my_label, label)  # type: ignore [no-untyped-call]
+    np.testing.assert_array_equal(my_label, label)
 
 
 def test_my_polygons_to_label() -> None:
@@ -237,14 +230,12 @@ def test_my_polygons_to_label() -> None:
     assert my_label.shape == shape
 
     label = polygons_to_label(
-        np.expand_dims(  # type: ignore [no-untyped-call]
-            np.clip(dists, 1e-3, None), axis=0
-        ),
-        np.expand_dims(points, axis=0),  # type: ignore [no-untyped-call]
+        np.expand_dims(np.clip(dists, 1e-3, None), axis=0),
+        np.expand_dims(points, axis=0),
         shape,
     )
 
-    np.testing.assert_array_equal(my_label, label)  # type: ignore [no-untyped-call]
+    np.testing.assert_array_equal(my_label, label)
 
 
 @pytest.fixture(params=[True, False])
@@ -348,9 +339,9 @@ def test_naive_fusion_3d(
     label[label == 2] = 2
     label[label == 3] = 2
 
-    np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
-    np.testing.assert_array_equal(lbl_iso, label)  # type: ignore [no-untyped-call]
-    np.testing.assert_array_equal(lbl_aniso, label)  # type: ignore [no-untyped-call]
+    np.testing.assert_array_equal(lbl, label)
+    np.testing.assert_array_equal(lbl_iso, label)
+    np.testing.assert_array_equal(lbl_aniso, label)
 
 
 @pytest.mark.filterwarnings(
@@ -427,9 +418,9 @@ def test_naive_fusion_2d(
     print(lbl)
     print(label)
 
-    np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
-    np.testing.assert_array_equal(lbl_iso, label)  # type: ignore [no-untyped-call]
-    np.testing.assert_array_equal(lbl_aniso, label)  # type: ignore [no-untyped-call]
+    np.testing.assert_array_equal(lbl, label)
+    np.testing.assert_array_equal(lbl_iso, label)
+    np.testing.assert_array_equal(lbl_aniso, label)
 
 
 def test_naive_fusion_2d_with_overlaps() -> None:
@@ -470,7 +461,7 @@ def test_naive_fusion_2d_with_overlaps() -> None:
     print(lbl)
     print(label)
 
-    np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
+    np.testing.assert_array_equal(lbl, label)
 
 
 def test_naive_fusion_2d_respect_probs() -> None:
@@ -510,7 +501,7 @@ def test_naive_fusion_2d_respect_probs() -> None:
     print(lbl)
     print(label)
 
-    np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
+    np.testing.assert_array_equal(lbl, label)
 
 
 def test_naive_fusion_2d_anisotropic() -> None:
@@ -563,7 +554,7 @@ def test_naive_fusion_2d_anisotropic() -> None:
     print(lbl)
     print(label)
 
-    np.testing.assert_array_equal(lbl, label)  # type: ignore [no-untyped-call]
+    np.testing.assert_array_equal(lbl, label)
 
 
 def test_naive_fusion_2d_winding() -> None:
@@ -626,17 +617,11 @@ def test_naive_fusion_2d_winding() -> None:
     print(label)
 
     # lbl without slicing should not work in this case
-    np.testing.assert_raises(  # type: ignore [no-untyped-call]
-        AssertionError, np.testing.assert_array_equal, lbl, label
-    )
+    np.testing.assert_raises(AssertionError, np.testing.assert_array_equal, lbl, label)
     # lbl with slicing should work
-    np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
-        lbl_no_slicing, label
-    )
+    np.testing.assert_array_equal(lbl_no_slicing, label)
     # lbl with slicing and anisotropic version should also work
-    np.testing.assert_array_equal(  # type: ignore [no-untyped-call]
-        lbl_no_slicing_anisotropic, label
-    )
+    np.testing.assert_array_equal(lbl_no_slicing_anisotropic, label)
 
 
 def test_respect_probs_warning_in_naive_fusion() -> None:
@@ -717,18 +702,14 @@ def test_paint_in_without_overlaps() -> None:
     lbl[1:, 1:] = True
 
     x = nf.paint_in_without_overlaps(np.zeros(shape), lbl, 1)
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        x[1:, 1:], np.ones((2, 2))
-    )
-    np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
-    np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[1:, 1:], np.ones((2, 2)))
+    np.testing.assert_equal(x[:, 0], np.zeros((3,)))
+    np.testing.assert_equal(x[0, :], np.zeros((3,)))
 
     x = nf.paint_in_without_overlaps(np.ones(shape), lbl, 3)
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        x[1:, 1:], 3 * np.ones((2, 2))
-    )
-    np.testing.assert_equal(x[:, 0], np.ones((3,)))  # type: ignore [no-untyped-call]
-    np.testing.assert_equal(x[0, :], np.ones((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[1:, 1:], 3 * np.ones((2, 2)))
+    np.testing.assert_equal(x[:, 0], np.ones((3,)))
+    np.testing.assert_equal(x[0, :], np.ones((3,)))
 
 
 def test_paint_in_with_overlaps() -> None:
@@ -738,56 +719,46 @@ def test_paint_in_with_overlaps() -> None:
     lbl[1:, 1:] = True
 
     x = nf.paint_in_with_overlaps(np.zeros(shape), lbl, 1)
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        x[1:, 1:], np.ones((2, 2))
-    )
-    np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
-    np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[1:, 1:], np.ones((2, 2)))
+    np.testing.assert_equal(x[:, 0], np.zeros((3,)))
+    np.testing.assert_equal(x[0, :], np.zeros((3,)))
 
     x = nf.paint_in_with_overlaps(np.ones(shape), lbl, 3)
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        x[1:, 1:], -np.ones((2, 2))
-    )
-    np.testing.assert_equal(x[:, 0], np.ones((3,)))  # type: ignore [no-untyped-call]
-    np.testing.assert_equal(x[0, :], np.ones((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[1:, 1:], -np.ones((2, 2)))
+    np.testing.assert_equal(x[:, 0], np.ones((3,)))
+    np.testing.assert_equal(x[0, :], np.ones((3,)))
 
     y = np.zeros(shape)
     y[1, 1] = 2
     x = nf.paint_in_with_overlaps(y, lbl, 3)
     assert x[1, 1] == -1
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        x[1:, 2], 3 * np.ones((2,))
-    )
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        x[2, 1:], 3 * np.ones((2,))
-    )
-    np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
-    np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[1:, 2], 3 * np.ones((2,)))
+    np.testing.assert_equal(x[2, 1:], 3 * np.ones((2,)))
+    np.testing.assert_equal(x[:, 0], np.zeros((3,)))
+    np.testing.assert_equal(x[0, :], np.zeros((3,)))
 
 
 def test_paint_in_without_overlaps_check_probs() -> None:
     """Set values of an array and respect their probabilities function."""
     shape = (3, 3)
     lbl = np.zeros(shape, dtype=bool)
-    new_probs = np.zeros(shape)
+    new_probs = np.zeros(shape, dtype=np.float32)
     lbl[1:, 1:] = True
     new_probs[1:, 1:] = 0.9
     new_probs[2, 2] = 0.95
 
     # nothing in paint_in
     paint_in = np.zeros(shape)
-    old_probs = np.zeros(shape)
+    old_probs = np.zeros(shape, dtype=np.float32)
     x, p = nf.paint_in_without_overlaps_check_probs(
         paint_in, lbl, old_probs, new_probs, 1
     )
 
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        x[1:, 1:], np.ones((2, 2))
-    )
-    np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
-    np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[1:, 1:], np.ones((2, 2)))
+    np.testing.assert_equal(x[:, 0], np.zeros((3,)))
+    np.testing.assert_equal(x[0, :], np.zeros((3,)))
 
-    np.testing.assert_equal(p, new_probs)  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(p, new_probs)
 
     # too low probability in old_probs
     old_probs[1, 1] = 0.8
@@ -796,13 +767,11 @@ def test_paint_in_without_overlaps_check_probs() -> None:
         paint_in, lbl, old_probs, new_probs, 1
     )
 
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        x[1:, 1:], np.ones((2, 2))
-    )
-    np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
-    np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[1:, 1:], np.ones((2, 2)))
+    np.testing.assert_equal(x[:, 0], np.zeros((3,)))
+    np.testing.assert_equal(x[0, :], np.zeros((3,)))
 
-    np.testing.assert_equal(p, new_probs)  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(p, new_probs)
 
     # too low probability in old_probs
     old_probs[2, 2] = 0.93
@@ -811,13 +780,11 @@ def test_paint_in_without_overlaps_check_probs() -> None:
         paint_in, lbl, old_probs, new_probs, 1
     )
 
-    np.testing.assert_equal(  # type: ignore [no-untyped-call]
-        x[1:, 1:], np.ones((2, 2))
-    )
-    np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
-    np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[1:, 1:], np.ones((2, 2)))
+    np.testing.assert_equal(x[:, 0], np.zeros((3,)))
+    np.testing.assert_equal(x[0, :], np.zeros((3,)))
 
-    np.testing.assert_equal(p, new_probs)  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(p, new_probs)
 
     # too high probability in old_probs
     old_probs[1, 1] = 0.93
@@ -828,15 +795,15 @@ def test_paint_in_without_overlaps_check_probs() -> None:
 
     x_ = np.ones((2, 2))
     x_[0, 0] = 3
-    np.testing.assert_equal(x[1:, 1:], x_)  # type: ignore [no-untyped-call]
-    np.testing.assert_equal(x[:, 0], np.zeros((3,)))  # type: ignore [no-untyped-call]
-    np.testing.assert_equal(x[0, :], np.zeros((3,)))  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(x[1:, 1:], x_)
+    np.testing.assert_equal(x[:, 0], np.zeros((3,)))
+    np.testing.assert_equal(x[0, :], np.zeros((3,)))
 
     p_ = np.zeros(shape)
     p_[1:, 1:] = 0.9
     p_[1, 1] = 0.93
     p_[2, 2] = 0.95
-    np.testing.assert_equal(p, p_)  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(p, p_)
 
 
 def test_polygon_list_with_probs_2d() -> None:
@@ -879,4 +846,4 @@ def test_polygon_list_with_probs_2d() -> None:
     test_array[3:, 5:] = prob1
     print(test_array)
 
-    np.testing.assert_equal(prob_array, test_array)  # type: ignore [no-untyped-call]
+    np.testing.assert_equal(prob_array, test_array)
