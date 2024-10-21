@@ -1,4 +1,5 @@
 """Nox sessions."""
+
 import os
 import shlex
 import shutil
@@ -22,7 +23,7 @@ except ImportError:
 
 
 package = "merge_stardist_masks"
-python_versions = ["3.9", "3.8", "3.7"]
+python_versions = ["3.12", "3.11", "3.10", "3.9"]
 nox.needs_version = ">= 2021.6.6"
 nox.options.sessions = (
     "pre-commit",
@@ -109,11 +110,19 @@ def activate_virtualenv_in_precommit_hooks(session: Session) -> None:
                 break
 
 
-@session(name="pre-commit", python="3.10")
+@session(name="pre-commit", python="3.12")
 def precommit(session: Session) -> None:
     """Lint using pre-commit."""
     args = session.posargs or ["run", "--all-files", "--show-diff-on-failure"]
-    session.install(
+    # Workaround due to pgkutil.ImpImporter
+    # https://stackoverflow.com/questions/77364550/attributeerror-module-pkgutil-has-no-attribute-impimporter-did-you-mean
+    session.run("python", "-m", "ensurepip", "--upgrade")
+    session.run("python", "-m", "pip", "install", "--upgrade", "setuptools")
+    session.run(
+        "python",
+        "-m",
+        "pip",
+        "install",
         "black",
         "darglint",
         "flake8",
@@ -125,14 +134,14 @@ def precommit(session: Session) -> None:
         "pre-commit",
         "pre-commit-hooks",
         "pyupgrade",
-        "reorder-python-imports",
+        "reorder-python-imports-black",
     )
     session.run("pre-commit", *args)
     if args and args[0] == "install":
         activate_virtualenv_in_precommit_hooks(session)
 
 
-@session(python="3.10")
+@session(python="3.12")
 def safety(session: Session) -> None:
     """Scan dependencies for insecure packages."""
     requirements = session.poetry.export_requirements()
@@ -165,8 +174,28 @@ def mypy(session: Session) -> None:
 @session(python=python_versions)
 def tests(session: Session) -> None:
     """Run the test suite."""
-    session.install(".")
-    session.install("coverage[toml]", "pytest", "pygments", "pytest-mock", "tensorflow")
+    # Workaround due to pgkutil.ImpImporter
+    # https://stackoverflow.com/questions/77364550/attributeerror-module-pkgutil-has-no-attribute-impimporter-did-you-mean
+    session.run("python", "-m", "ensurepip", "--upgrade")
+    session.run("python", "-m", "pip", "install", "--upgrade", "setuptools")
+
+    # session.install(".")
+    # session.install(
+    #     "coverage[toml]", "pytest", "pygments", "pytest-mock", "tensorflow"
+    # )
+    session.run("python", "-m", "pip", "install", ".")
+    session.run(
+        "python",
+        "-m",
+        "pip",
+        "install",
+        ".",
+        "coverage[toml]",
+        "pytest",
+        "pygments",
+        "pytest-mock",
+        "tensorflow",
+    )
     try:
         session.run("coverage", "run", "--parallel", "-m", "pytest", *session.posargs)
     finally:
