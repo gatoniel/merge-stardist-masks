@@ -142,4 +142,4 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         dist_and_mask[..., : -self.len_t] = dists
         dist_and_mask[..., -self.len_t :] = dist_mask
 
-        return (xs_np), (prob, dist_and_mask)
+        return (xs_np,), (prob, dist_and_mask)
