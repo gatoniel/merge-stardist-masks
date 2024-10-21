@@ -1,4 +1,5 @@
 """Test the data generator for stacked timepoints of 2d images."""
+
 import numpy as np
 import pytest
 
@@ -15,7 +16,12 @@ from merge_stardist_masks.data_2d import OptimizedStackedTimepointsData2D
     ],
 )
 def test_getitem(
-    n_channel: int, n_rays: int, len_t: int, grid: int, batch_size: int, patch_size: int
+    n_channel: int,
+    n_rays: int,
+    len_t: int,
+    grid: int,
+    batch_size: int,
+    patch_size: int,
 ) -> None:
     """Verify correctly sized output shapes of __getitem__."""
     shapexy = 16
@@ -37,13 +43,23 @@ def test_getitem(
         grid=(grid,) * 2,
     )
 
-    [new_x], [probs, dists] = dg[0]
+    (new_x), (probs, dists) = dg[0]
 
     outshapexy = patch_size // grid
 
-    assert new_x.shape == (batch_size, patch_size, patch_size, len_t * n_channel)
+    assert new_x.shape == (
+        batch_size,
+        patch_size,
+        patch_size,
+        len_t * n_channel,
+    )
     assert probs.shape == (batch_size, outshapexy, outshapexy, len_t)
-    assert dists.shape == (batch_size, outshapexy, outshapexy, (n_rays + 1) * len_t)
+    assert dists.shape == (
+        batch_size,
+        outshapexy,
+        outshapexy,
+        (n_rays + 1) * len_t,
+    )
 
     mask_start = len_t * n_rays
 

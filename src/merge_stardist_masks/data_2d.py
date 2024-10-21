@@ -1,4 +1,5 @@
 """Data generator for 2d time stacks based on stardist's data generators."""
+
 from __future__ import annotations
 
 from typing import List
@@ -41,6 +42,7 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         foreground_prob: int = 0,
         maxfilter_patch_size: Optional[int] = None,
         sample_ind_cache: bool = True,
+        keras_kwargs=None,
     ) -> None:
         """Initialize with arrays of shape (size, T, Y, X, channels)."""
         super().__init__(
@@ -58,6 +60,7 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
             maxfilter_patch_size=maxfilter_patch_size,
             use_gpu=use_gpu,
             sample_ind_cache=sample_ind_cache,
+            keras_kwargs=keras_kwargs,
         )
 
         self.shape_completion = bool(shape_completion)
@@ -68,9 +71,10 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
 
         self.sd_mode = "opencl" if self.use_gpu else "cpp"
 
-    def __getitem__(
-        self, i: int
-    ) -> Tuple[List[npt.NDArray[np.double]], List[npt.NDArray[np.double]],]:
+    def __getitem__(self, i: int) -> Tuple[
+        List[npt.NDArray[np.double]],
+        List[npt.NDArray[np.double]],
+    ]:
         """Return batch i as numpy array."""
         idx = self.batch(i)
         arrays = [
@@ -143,4 +147,4 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         dist_and_mask[..., : -self.len_t] = dists
         dist_and_mask[..., -self.len_t :] = dist_mask
 
-        return [xs], [prob, dist_and_mask]
+        return (xs), (prob, dist_and_mask)

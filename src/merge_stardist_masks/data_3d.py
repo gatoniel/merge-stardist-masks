@@ -1,4 +1,5 @@
 """Stardist 3D data generator for new weights and probability maps."""
+
 from typing import List
 from typing import Tuple
 from typing import TypeVar
@@ -97,7 +98,7 @@ class OptimizedStarDistData3D(StarDistData3D):  # type: ignore [misc]
         )
 
         if self.n_classes is None:
-            return [xs], [prob, dist]
+            return (xs), (prob, dist)
         else:
             tmp = [
                 mask_to_categorical(y, self.n_classes, self.classes[k])
@@ -113,7 +114,9 @@ class OptimizedStarDistData3D(StarDistData3D):  # type: ignore [misc]
             # prob_class = prob_class[self.ss_grid]
             # 'zoom' might lead to better registered maps (especially if upscaled later)
             prob_class = zoom(
-                prob_class, (1,) + tuple(1 / g for g in self.grid) + (1,), order=0
+                prob_class,
+                (1,) + tuple(1 / g for g in self.grid) + (1,),
+                order=0,
             )
 
-            return [xs], [prob, dist, prob_class]
+            return (xs), (prob, dist, prob_class)

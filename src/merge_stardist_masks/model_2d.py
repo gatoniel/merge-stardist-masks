@@ -1,4 +1,5 @@
 """Stardist 2D model modified for stacked timepoints."""
+
 from __future__ import annotations
 
 import warnings
@@ -20,6 +21,7 @@ from csbdeep.internals.predict import tile_iterator  # type: ignore [import]
 from csbdeep.internals.predict import total_n_tiles
 from csbdeep.utils import _raise  # type: ignore [import]
 from csbdeep.utils import axes_dict
+from csbdeep.utils.tf import BACKEND as K
 from csbdeep.utils.tf import CARETensorBoard  # type: ignore [import]
 from csbdeep.utils.tf import IS_TF_1
 from csbdeep.utils.tf import keras_import
@@ -46,7 +48,6 @@ from .timeseries_helpers import timeseries_to_batch
 T = TypeVar("T", bound=np.generic)
 
 
-K = keras_import("backend")
 Input, Conv2D, MaxPooling2D = keras_import("layers", "Input", "Conv2D", "MaxPooling2D")
 Adam = keras_import("optimizers", "Adam")
 ReduceLROnPlateau, TensorBoard = keras_import(
@@ -98,7 +99,11 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             unet = unet_base
 
         output_prob = Conv2D(
-            self.config.len_t, (1, 1), name="prob", padding="same", activation="sigmoid"
+            self.config.len_t,
+            (1, 1),
+            name="prob",
+            padding="same",
+            activation="sigmoid",
         )(unet)
         output_dist = Conv2D(
             self.config.n_rays * self.config.len_t,
@@ -153,9 +158,13 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             dist_true_mask: EagerTensor, dist_pred: EagerTensor
         ) -> Tuple[List[EagerTensor], List[EagerTensor]]:
             return tf.split(
-                dist_true_mask, num_or_size_splits=self.num_or_size_splits, axis=-1
+                dist_true_mask,
+                num_or_size_splits=self.num_or_size_splits,
+                axis=-1,
             ), tf.split(
-                dist_pred, num_or_size_splits=self.num_or_size_splits_pred, axis=-1
+                dist_pred,
+                num_or_size_splits=self.num_or_size_splits_pred,
+                axis=-1,
             )
 
         def dist_loss(
@@ -287,7 +296,8 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
     ) -> tf.keras.callbacks.History:
         """Monkey patch the original StarDistData2D generator."""
         with patch(
-            "stardist.models.model2d.StarDistData2D", OptimizedStackedTimepointsData2D
+            "stardist.models.model2d.StarDistData2D",
+            OptimizedStackedTimepointsData2D,
         ):
             return super().train(
                 X=x,
@@ -480,11 +490,17 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
                 result_tile = predict_direct(tile)
                 # account for grid
                 s_src = [
-                    slice(s.start // grid_dict.get(a, 1), s.stop // grid_dict.get(a, 1))
+                    slice(
+                        s.start // grid_dict.get(a, 1),
+                        s.stop // grid_dict.get(a, 1),
+                    )
                     for s, a in zip(s_src, axes_net)
                 ]
                 s_dst = [
-                    slice(s.start // grid_dict.get(a, 1), s.stop // grid_dict.get(a, 1))
+                    slice(
+                        s.start // grid_dict.get(a, 1),
+                        s.stop // grid_dict.get(a, 1),
+                    )
                     for s, a in zip(s_dst, axes_net)
                 ]
                 # prob and dist have different channel dimensionality than image x

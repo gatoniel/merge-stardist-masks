@@ -1,4 +1,5 @@
 """Base data generator for time stacks based on stardist's data generators."""
+
 from __future__ import annotations
 
 import threading
@@ -50,10 +51,15 @@ class StackedTimepointsDataBase(RollingSequence):  # type: ignore [misc]
         maxfilter_patch_size: Optional[int] = None,
         augmenter: Optional[AugmenterSignature[T]] = None,
         foreground_prob: int = 0,
+        keras_kwargs=None,
     ) -> None:
         """Initialize with appropriately shaped arrays."""
         super().__init__(
-            data_size=len(xs), batch_size=batch_size, length=length, shuffle=True
+            data_size=len(xs),
+            batch_size=batch_size,
+            length=length,
+            shuffle=True,
+            keras_kwargs=keras_kwargs,
         )
         n_classes is None or _raise(NotImplementedError("n_classes is not implemented"))
 
@@ -196,7 +202,9 @@ class StackedTimepointsDataBase(RollingSequence):  # type: ignore [misc]
                 else None
             )
             inds = get_valid_inds(
-                self.ys[k][self.mid_t], self.patch_size, patch_filter=patch_filter
+                self.ys[k][self.mid_t],
+                self.patch_size,
+                patch_filter=patch_filter,
             )
             if self.sample_ind_cache:
                 with self.lock:
