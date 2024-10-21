@@ -72,8 +72,8 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         self.sd_mode = "opencl" if self.use_gpu else "cpp"
 
     def __getitem__(self, i: int) -> Tuple[
-        List[npt.NDArray[np.double]],
-        List[npt.NDArray[np.double]],
+        Tuple[npt.NDArray[np.double]],
+        Tuple[npt.NDArray[np.double], npt.NDArray[np.double]],
     ]:
         """Return batch i as numpy array."""
         idx = self.batch(i)
@@ -147,4 +147,4 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         dist_and_mask[..., : -self.len_t] = dists
         dist_and_mask[..., -self.len_t :] = dist_mask
 
-        return (xs), (prob, dist_and_mask)
+        return ((xs), (prob, dist_and_mask))

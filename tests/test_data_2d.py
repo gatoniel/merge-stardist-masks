@@ -26,8 +26,8 @@ def test_getitem(
     """Verify correctly sized output shapes of __getitem__."""
     shapexy = 16
     shape = (len_t, shapexy, shapexy, n_channel)
-    x = np.random.random((1,) + shape[1:]).repeat(len_t, axis=0)
-    x = np.squeeze(x)
+    repeat_x = np.random.random((1,) + shape[1:]).repeat(len_t, axis=0)
+    x = np.squeeze(repeat_x)
 
     print(x.shape)
     y = np.zeros(shape[:-1], dtype=np.uint8)
@@ -43,7 +43,7 @@ def test_getitem(
         grid=(grid,) * 2,
     )
 
-    (new_x), (probs, dists) = dg[0]
+    (new_x,), (probs, dists) = dg[0]
 
     outshapexy = patch_size // grid
 
@@ -67,21 +67,15 @@ def test_getitem(
         slice_x1 = slice(i * n_channel, (i + 1) * n_channel)
         slice_x2 = slice((i + 1) * n_channel, (i + 2) * n_channel)
 
-        np.testing.assert_equal(  # type: ignore [no-untyped-call]
-            new_x[..., slice_x1], new_x[..., slice_x2]
-        )
+        np.testing.assert_equal(new_x[..., slice_x1], new_x[..., slice_x2])
 
-        np.testing.assert_equal(  # type: ignore [no-untyped-call]
-            probs[..., i], probs[..., i + 1]
-        )
+        np.testing.assert_equal(probs[..., i], probs[..., i + 1])
 
         slice_y1 = slice(i * n_rays, (i + 1) * n_rays)
         slice_y2 = slice((i + 1) * n_rays, (i + 2) * n_rays)
 
-        np.testing.assert_equal(  # type: ignore [no-untyped-call]
-            dists[..., slice_y1], dists[..., slice_y2]
-        )
+        np.testing.assert_equal(dists[..., slice_y1], dists[..., slice_y2])
 
-        np.testing.assert_equal(  # type: ignore [no-untyped-call]
+        np.testing.assert_equal(
             dists[..., mask_start + i], dists[..., mask_start + i + 1]
         )
