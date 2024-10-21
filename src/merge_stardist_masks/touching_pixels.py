@@ -1,10 +1,11 @@
 """Functions to calculate optimized prob maps and distance weights."""
+
 from __future__ import annotations
 
-import numba  # type: ignore [import]
+import numba  # type: ignore [import-untyped]
 import numpy as np
 import numpy.typing as npt
-from edt import edt  # type: ignore [import]
+from edt import edt  # type: ignore [import-not-found]
 from numba import njit
 
 
@@ -281,7 +282,9 @@ def determine_neighbors_3d(
 
 
 def bordering_gaussian_weights(
-    border_pixels: npt.NDArray[np.bool_], lbl: npt.NDArray[np.int_], sigma: int = 2
+    border_pixels: npt.NDArray[np.bool_],
+    lbl: npt.NDArray[np.int_],
+    sigma: int = 2,
 ) -> npt.NDArray[np.single]:
     """Gaussian of edt from border_pixels only for pixels with lbl > 0."""
     bordering_edt = edt(np.logical_not(border_pixels))

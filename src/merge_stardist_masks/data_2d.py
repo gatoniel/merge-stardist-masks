@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -42,7 +44,7 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         foreground_prob: int = 0,
         maxfilter_patch_size: Optional[int] = None,
         sample_ind_cache: bool = True,
-        keras_kwargs=None,
+        keras_kwargs: Optional[Dict[Any, Any]] = None,
     ) -> None:
         """Initialize with arrays of shape (size, T, Y, X, channels)."""
         super().__init__(
@@ -72,8 +74,8 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         self.sd_mode = "opencl" if self.use_gpu else "cpp"
 
     def __getitem__(self, i: int) -> Tuple[
-        Tuple[npt.NDArray[np.double]],
-        Tuple[npt.NDArray[np.double], npt.NDArray[np.double]],
+        Tuple[npt.NDArray[np.float32]],
+        Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]],
     ]:
         """Return batch i as numpy array."""
         idx = self.batch(i)
@@ -88,9 +90,9 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         ]
 
         if self.n_channel is None:
-            xs, ys = list(zip(*[(x[0][self.b], y[0]) for y, x in arrays]))
+            xs_, ys_ = list(zip(*[(x[0][self.b], y[0]) for y, x in arrays]))
         else:
-            xs, ys = list(
+            xs_, ys_ = list(
                 zip(
                     *[
                         (np.stack([_x[0] for _x in x], axis=-1)[self.b], y[0])
@@ -99,7 +101,7 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
                 )
             )
 
-        xs, ys = tuple(zip(*tuple(self.augmenter(_x, _y) for _x, _y in zip(xs, ys))))
+        xs, ys = tuple(zip(*tuple(self.augmenter(_x, _y) for _x, _y in zip(xs_, ys_))))
 
         prob_ = np.stack([edt_prob_timeseries(lbl, self.b, self.ss_grid) for lbl in ys])
         touching = np.stack(
@@ -114,7 +116,7 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
             ]
         )
         prob = np.clip(prob_ - touching, 0, 1)
-        dist_mask: npt.NDArray[np.double] = prob_ + touching_edt
+        dist_mask: npt.NDArray[np.float32] = prob_ + touching_edt
 
         dists = np.stack(
             [
@@ -126,16 +128,9 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         )
 
         if xs[0].ndim == 3:
-            xs = [
-                np.expand_dims(x, axis=-1) for x in xs  # type: ignore [no-untyped-call]
-            ]
-        xs = np.stack(
-            [
-                np.concatenate(  # type: ignore [no-untyped-call]
-                    [x[i] for i in range(self.len_t)], axis=-1
-                )
-                for x in xs
-            ]
+            xs = tuple(np.expand_dims(x, axis=-1) for x in xs)
+        xs_np = np.stack(
+            [np.concatenate([x[i] for i in range(self.len_t)], axis=-1) for x in xs]
         )
 
         # append dist_mask to dist as additional channel
@@ -147,4 +142,4 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
         dist_and_mask[..., : -self.len_t] = dists
         dist_and_mask[..., -self.len_t :] = dist_mask
 
-        return ((xs), (prob, dist_and_mask))
+        return (xs_np), (prob, dist_and_mask)
