@@ -283,9 +283,9 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
     def train(
         self,
         x: List[npt.NDArray[np.double]],
-        y: List[npt.NDArray[np.int_]],
+        y: List[npt.NDArray[np.uint16]],
         validation_data: Tuple[
-            List[npt.NDArray[np.double]], List[npt.NDArray[np.int_]]
+            List[npt.NDArray[np.double]], List[npt.NDArray[np.uint16]]
         ],
         classes: str = "auto",
         augmenter: Optional[AugmenterSignature[T]] = None,
