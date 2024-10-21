@@ -134,6 +134,7 @@ def precommit(session: Session) -> None:
         "pre-commit",
         "pre-commit-hooks",
         "pyupgrade",
+        # https://github.com/psf/black/issues/4175
         "reorder-python-imports-black",
     )
     session.run("pre-commit", *args)
