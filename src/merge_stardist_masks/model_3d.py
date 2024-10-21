@@ -1,7 +1,8 @@
 """Stardist 3D model with new weights and probability maps."""
+
 from unittest.mock import patch
 
-from stardist.models import StarDist3D  # type: ignore [import]
+from stardist.models import StarDist3D  # type: ignore [import-untyped]
 
 from .data_3d import OptimizedStarDistData3D
 
