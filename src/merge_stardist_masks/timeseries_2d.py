@@ -1,22 +1,28 @@
 """Utility functions to preprocess timeseries label images."""
+
 from __future__ import annotations
 
+from typing import Any
 from typing import Tuple
+from typing import TypeVar
 
 import numpy as np
 import numpy.typing as npt
-from stardist.geometry import star_dist  # type: ignore [import]
-from stardist.utils import edt_prob  # type: ignore [import]
+from stardist.geometry import star_dist  # type: ignore [import-untyped]
+from stardist.utils import edt_prob  # type: ignore [import-untyped]
 
 from .touching_pixels import bordering_gaussian_weights
 from .touching_pixels import touching_pixels_2d
 
+T = TypeVar("T", bound=np.generic)
+U = TypeVar("U", bound=np.unsignedinteger[Any])
+
 
 def star_dist_timeseries(
-    lbl: npt.NDArray[np.int_], n_rays: int, mode: str, grid: Tuple[int, ...]
-) -> npt.NDArray[np.int_]:
+    lbl: npt.NDArray[U], n_rays: int, mode: str, grid: Tuple[int, ...]
+) -> npt.NDArray[U]:
     """Calculate star_dist distances on each timepoint individually."""
-    conc: npt.NDArray[np.int_] = np.concatenate(  # type: ignore [no-untyped-call]
+    conc: npt.NDArray[U] = np.concatenate(
         [
             star_dist(lbl[i, ...], n_rays, mode=mode, grid=grid)
             for i in range(lbl.shape[0])
@@ -27,22 +33,25 @@ def star_dist_timeseries(
 
 
 def subsample(
-    lbl: npt.NDArray[np.int_], i: int, b: Tuple[slice, ...], ss_grid: Tuple[slice, ...]
-) -> npt.NDArray[np.int_]:
+    lbl: npt.NDArray[T],
+    i: int,
+    b: Tuple[slice, ...],
+    ss_grid: Tuple[slice, ...],
+) -> npt.NDArray[T]:
     """Convenience function to subsample all the grids."""
-    subsampled: npt.NDArray[np.int_] = lbl[(i,) + b[1:]][ss_grid[1:3]]
+    subsampled: npt.NDArray[T] = lbl[(i,) + b[1:]][ss_grid[1:3]]
     return subsampled
 
 
 def bordering_gaussian_weights_timeseries(
     mask: npt.NDArray[np.bool_],
-    lbl: npt.NDArray[np.int_],
+    lbl: npt.NDArray[U],
     sigma: int,
     b: Tuple[slice, ...],
     ss_grid: Tuple[slice, ...],
-) -> npt.NDArray[np.double]:
+) -> npt.NDArray[np.single]:
     """Calculate weights for each timepoint individually."""
-    return np.stack(
+    x: npt.NDArray[np.single] = np.stack(
         [
             bordering_gaussian_weights(
                 mask[..., i], subsample(lbl, i, b, ss_grid), sigma=sigma
@@ -51,10 +60,11 @@ def bordering_gaussian_weights_timeseries(
         ],
         axis=-1,
     )
+    return x
 
 
 def touching_pixels_2d_timeseries(
-    lbl: npt.NDArray[np.int_], b: Tuple[slice, ...], ss_grid: Tuple[slice, ...]
+    lbl: npt.NDArray[U], b: Tuple[slice, ...], ss_grid: Tuple[slice, ...]
 ) -> npt.NDArray[np.bool_]:
     """Calculate touching_pixels_2d individually on each timepoint."""
     return np.stack(
@@ -67,9 +77,10 @@ def touching_pixels_2d_timeseries(
 
 
 def edt_prob_timeseries(
-    lbl: npt.NDArray[np.int_], b: Tuple[slice, ...], ss_grid: Tuple[slice, ...]
+    lbl: npt.NDArray[U], b: Tuple[slice, ...], ss_grid: Tuple[slice, ...]
 ) -> npt.NDArray[np.double]:
     """Calculate edt_prob individually on each timepoint."""
     return np.stack(
-        [edt_prob(subsample(lbl, i, b, ss_grid)) for i in range(lbl.shape[0])], axis=-1
+        [edt_prob(subsample(lbl, i, b, ss_grid)) for i in range(lbl.shape[0])],
+        axis=-1,
     )

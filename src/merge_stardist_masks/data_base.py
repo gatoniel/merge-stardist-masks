@@ -1,8 +1,10 @@
 """Base data generator for time stacks based on stardist's data generators."""
+
 from __future__ import annotations
 
 import threading
 import warnings
+from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import List
@@ -12,9 +14,9 @@ from typing import TypeVar
 
 import numpy as np
 import numpy.typing as npt
-from csbdeep.internals.train import RollingSequence  # type: ignore [import]
-from csbdeep.utils import _raise  # type: ignore [import]
-from stardist.sample_patches import get_valid_inds  # type: ignore [import]
+from csbdeep.internals.train import RollingSequence  # type: ignore [import-untyped]
+from csbdeep.utils import _raise  # type: ignore [import-untyped]
+from stardist.sample_patches import get_valid_inds  # type: ignore [import-untyped]
 
 T = TypeVar("T", bound=np.generic)
 
@@ -50,10 +52,15 @@ class StackedTimepointsDataBase(RollingSequence):  # type: ignore [misc]
         maxfilter_patch_size: Optional[int] = None,
         augmenter: Optional[AugmenterSignature[T]] = None,
         foreground_prob: int = 0,
+        keras_kwargs: Optional[Dict[Any, Any]] = None,
     ) -> None:
         """Initialize with appropriately shaped arrays."""
         super().__init__(
-            data_size=len(xs), batch_size=batch_size, length=length, shuffle=True
+            data_size=len(xs),
+            batch_size=batch_size,
+            length=length,
+            shuffle=True,
+            keras_kwargs=keras_kwargs,
         )
         n_classes is None or _raise(NotImplementedError("n_classes is not implemented"))
 
@@ -94,9 +101,7 @@ class StackedTimepointsDataBase(RollingSequence):  # type: ignore [misc]
         )
 
         if x_ndim == patch_ndim + 1:
-            xs = [
-                np.expand_dims(x, axis=-1) for x in xs  # type: ignore [no-untyped-call]
-            ]
+            xs = [np.expand_dims(x, axis=-1) for x in xs]
             x_ndim = xs[0].ndim
 
         if isinstance(xs, (np.ndarray, tuple, list)) and isinstance(
@@ -151,13 +156,13 @@ class StackedTimepointsDataBase(RollingSequence):  # type: ignore [misc]
         self.mid_t = len_t // 2
 
         if self.use_gpu:
-            from gputools import max_filter  # type: ignore [import]
+            from gputools import max_filter  # type: ignore [import-not-found]
 
             self.max_filter = lambda y, patch_size: max_filter(
                 y.astype(np.float32), patch_size
             )
         else:
-            from scipy.ndimage.filters import maximum_filter  # type: ignore [import]
+            from scipy.ndimage import maximum_filter  # type: ignore [import-untyped]
 
             self.max_filter = lambda y, patch_size: maximum_filter(
                 y, patch_size, mode="constant"
@@ -196,7 +201,9 @@ class StackedTimepointsDataBase(RollingSequence):  # type: ignore [misc]
                 else None
             )
             inds = get_valid_inds(
-                self.ys[k][self.mid_t], self.patch_size, patch_filter=patch_filter
+                self.ys[k][self.mid_t],
+                self.patch_size,
+                patch_filter=patch_filter,
             )
             if self.sample_ind_cache:
                 with self.lock:

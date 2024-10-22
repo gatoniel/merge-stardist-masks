@@ -1,4 +1,5 @@
 """Test the OptimizedStackedTimepointsModel2D extensively."""
+
 import numpy as np
 import pytest
 
@@ -10,7 +11,8 @@ from merge_stardist_masks.model_2d import OptimizedStackedTimepointsModel2D
 # This is heavily inspired by
 # https://github.com/stardist/stardist/blob/master/tests/test_model2D.py#L16
 @pytest.mark.parametrize(
-    "n_channel, n_rays, grid, len_t", [(1, 8, 1, 3), (2, 16, 1, 4), (1, 20, 2, 5)]
+    "n_channel, n_rays, grid, len_t",
+    [(1, 8, 1, 3), (2, 16, 1, 4), (1, 20, 2, 5)],
 )
 def test_model_conf_train_predict(
     tmpdir: str, n_channel: int, n_rays: int, grid: int, len_t: int
@@ -23,8 +25,8 @@ def test_model_conf_train_predict(
         img = np.repeat(img[..., np.newaxis], n_channel, axis=-1)
 
     imgs = [
-        np.copy(img),  # type: ignore [no-untyped-call]
-        np.copy(img),  # type: ignore [no-untyped-call]
+        np.copy(img),
+        np.copy(img),
         img,
     ]
 

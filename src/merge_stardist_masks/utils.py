@@ -1,4 +1,5 @@
 """Utility function for easier interaction with StarDist model files."""
+
 from __future__ import annotations
 
 import json
@@ -6,7 +7,7 @@ import os
 from typing import Optional
 from typing import Tuple
 
-from stardist.rays3d import Rays_Base  # type: ignore [import]
+from stardist.rays3d import Rays_Base  # type: ignore [import-untyped]
 from stardist.rays3d import rays_from_json
 
 

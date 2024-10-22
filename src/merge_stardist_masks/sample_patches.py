@@ -1,11 +1,12 @@
 """Modification of stardist.sample_patches for timestacks."""
+
 from __future__ import annotations
 
 from typing import TypeVar
 
 import numpy as np
 import numpy.typing as npt
-from csbdeep.utils import _raise  # type: ignore [import]
+from csbdeep.utils import _raise  # type: ignore [import-untyped]
 from csbdeep.utils import choice
 
 
@@ -37,7 +38,7 @@ def sample_patches(
     if valid_inds is None:
         valid_inds = tuple(
             _s.ravel()
-            for _s in np.meshgrid(  # type: ignore [no-untyped-call]
+            for _s in np.meshgrid(
                 *tuple(
                     np.arange(p // 2, s - p // 2 + 1)
                     for s, p in zip(datas[0].shape[1:], patch_size)

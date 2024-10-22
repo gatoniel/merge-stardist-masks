@@ -1,9 +1,10 @@
 """Sphinx configuration."""
+
 from datetime import datetime
 
 
 project = "Merge StarDist Masks"
-author = "Niklas Netter"
+author = "Niklas Breitenbach-Netter"
 copyright = f"{datetime.now().year}, {author}"
 extensions = [
     "sphinx.ext.autodoc",

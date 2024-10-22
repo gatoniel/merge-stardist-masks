@@ -1,7 +1,8 @@
 """Test the OptimizedStarDist3D extensively."""
+
 import numpy as np
 import pytest
-from stardist.models import Config3D  # type: ignore [import]
+from stardist.models import Config3D  # type: ignore [import-untyped]
 
 from .utils import circle_image
 from merge_stardist_masks.model_3d import OptimizedStarDist3D
@@ -23,8 +24,8 @@ def test_model_conf_train_predict(
     img = np.squeeze(img)
 
     imgs = [
-        np.copy(img),  # type: ignore [no-untyped-call]
-        np.copy(img),  # type: ignore [no-untyped-call]
+        np.copy(img),
+        np.copy(img),
         img,
     ]
 

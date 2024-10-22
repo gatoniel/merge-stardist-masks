@@ -1,9 +1,10 @@
 """Test utility functions to interact with StarDist model files."""
+
 from unittest.mock import Mock
 
 import pytest
-from pytest_mock import MockFixture  # type: ignore [import]
-from stardist.rays3d import Rays_Base  # type: ignore [import]
+from pytest_mock import MockFixture  # type: ignore [import-not-found]
+from stardist.rays3d import Rays_Base  # type: ignore [import-untyped]
 
 from merge_stardist_masks.utils import grid_from_path
 from merge_stardist_masks.utils import rays_from_path

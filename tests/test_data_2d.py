@@ -1,4 +1,5 @@
 """Test the data generator for stacked timepoints of 2d images."""
+
 import numpy as np
 import pytest
 
@@ -15,13 +16,18 @@ from merge_stardist_masks.data_2d import OptimizedStackedTimepointsData2D
     ],
 )
 def test_getitem(
-    n_channel: int, n_rays: int, len_t: int, grid: int, batch_size: int, patch_size: int
+    n_channel: int,
+    n_rays: int,
+    len_t: int,
+    grid: int,
+    batch_size: int,
+    patch_size: int,
 ) -> None:
     """Verify correctly sized output shapes of __getitem__."""
     shapexy = 16
     shape = (len_t, shapexy, shapexy, n_channel)
-    x = np.random.random((1,) + shape[1:]).repeat(len_t, axis=0)
-    x = np.squeeze(x)
+    repeat_x = np.random.random((1,) + shape[1:]).repeat(len_t, axis=0)
+    x = np.squeeze(repeat_x)
 
     print(x.shape)
     y = np.zeros(shape[:-1], dtype=np.uint8)
@@ -37,13 +43,23 @@ def test_getitem(
         grid=(grid,) * 2,
     )
 
-    [new_x], [probs, dists] = dg[0]
+    (new_x,), (probs, dists) = dg[0]
 
     outshapexy = patch_size // grid
 
-    assert new_x.shape == (batch_size, patch_size, patch_size, len_t * n_channel)
+    assert new_x.shape == (
+        batch_size,
+        patch_size,
+        patch_size,
+        len_t * n_channel,
+    )
     assert probs.shape == (batch_size, outshapexy, outshapexy, len_t)
-    assert dists.shape == (batch_size, outshapexy, outshapexy, (n_rays + 1) * len_t)
+    assert dists.shape == (
+        batch_size,
+        outshapexy,
+        outshapexy,
+        (n_rays + 1) * len_t,
+    )
 
     mask_start = len_t * n_rays
 
@@ -51,21 +67,15 @@ def test_getitem(
         slice_x1 = slice(i * n_channel, (i + 1) * n_channel)
         slice_x2 = slice((i + 1) * n_channel, (i + 2) * n_channel)
 
-        np.testing.assert_equal(  # type: ignore [no-untyped-call]
-            new_x[..., slice_x1], new_x[..., slice_x2]
-        )
+        np.testing.assert_equal(new_x[..., slice_x1], new_x[..., slice_x2])
 
-        np.testing.assert_equal(  # type: ignore [no-untyped-call]
-            probs[..., i], probs[..., i + 1]
-        )
+        np.testing.assert_equal(probs[..., i], probs[..., i + 1])
 
         slice_y1 = slice(i * n_rays, (i + 1) * n_rays)
         slice_y2 = slice((i + 1) * n_rays, (i + 2) * n_rays)
 
-        np.testing.assert_equal(  # type: ignore [no-untyped-call]
-            dists[..., slice_y1], dists[..., slice_y2]
-        )
+        np.testing.assert_equal(dists[..., slice_y1], dists[..., slice_y2])
 
-        np.testing.assert_equal(  # type: ignore [no-untyped-call]
+        np.testing.assert_equal(
             dists[..., mask_start + i], dists[..., mask_start + i + 1]
         )
