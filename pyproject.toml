@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "merge-stardist-masks"
-version = "0.1.4"
+version = "0.1.5"
 description = "Merge Stardist Masks"
-authors = ["Niklas Netter <niknett@gmail.com>"]
+authors = ["Niklas Breitenbach-Netter <niknett@gmail.com>"]
 license = "MIT"
 readme = "README.rst"
 homepage = "https://github.com/gatoniel/merge-stardist-masks"
