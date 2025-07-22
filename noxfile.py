@@ -145,15 +145,13 @@ def precommit(session: Session) -> None:
 @session(python="3.12")
 def safety(session: Session) -> None:
     """Scan dependencies for insecure packages."""
-    requirements = session.poetry.export_requirements()
+    session.poetry.export_requirements()
     session.install("safety")
     session.run(
         "safety",
-        "check",
-        "--full-report",
-        f"--file={requirements}",
-        # ignore a jinja2 safety issue
-        "--ignore=70612",
+        "scan",
+        "--key=$SAFETY_API_KEY",
+        "--detailed-output",
     )
 
 
