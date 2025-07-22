@@ -149,7 +149,7 @@ def safety(session: Session) -> None:
     session.install("safety")
     session.run(
         "safety",
-        "check",
+        "scan",
         "--full-report",
         f"--file={requirements}",
         # ignore a jinja2 safety issue
