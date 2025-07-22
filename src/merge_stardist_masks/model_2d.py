@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 import numpy as np
 import numpy.typing as npt
-import tensorflow as tf  # type: ignore [import-not-found]
+import tensorflow as tf  # type: ignore [import-untyped]
 from csbdeep.data import Normalizer  # type: ignore [import-untyped]
 from csbdeep.internals.blocks import unet_block  # type: ignore [import-untyped]
 from csbdeep.internals.predict import tile_iterator  # type: ignore [import-untyped]
@@ -36,7 +36,7 @@ from stardist.models.base import masked_metric_mse
 from stardist.models.base import StarDistPadAndCropResizer
 from stardist.models.base import weighted_categorical_crossentropy
 from stardist.utils import _is_floatarray  # type: ignore [import-untyped]
-from tensorflow.python.framework.ops import EagerTensor  # type: ignore [import-not-found]
+from tensorflow.python.framework.ops import EagerTensor  # type: ignore [import-untyped]
 from tqdm import tqdm  # type: ignore [import-untyped]
 
 from .config_2d import StackedTimepointsConfig2D
@@ -583,7 +583,7 @@ class OptimizedStackedTimepointsModel2D(StarDist2D):  # type: ignore [misc]
             )
         if np.isscalar(img_size):
             img_size = (img_size,) * self.config.n_dim
-        img_size = tuple(img_size)  # type: ignore [arg-type]
+        img_size = tuple(img_size)
         # print(img_size)
         # assert all(_is_power_of_2(s) for s in img_size)
         mid = tuple(s // 2 for s in img_size)
