@@ -94,7 +94,15 @@ jobs:
           restore-keys: |
             ${{ steps.pre-commit-cache.outputs.result }}-
 
+      - name: Run Nox with SAFETY_API_KEY exposed
+        if: matrix.session == 'safety'
+        run: |
+          nox --force-color --python=${{ matrix.python }}
+        env:
+          SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
+
       - name: Run Nox
+        if: matrix.session != 'safety'
         run: |
           nox --force-color --python=${{ matrix.python }}
 

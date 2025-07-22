@@ -150,10 +150,11 @@ def safety(session: Session) -> None:
     session.run(
         "safety",
         "scan",
+        "--key $SAFETY_API_KEY",
         "--full-report",
         f"--file={requirements}",
         # ignore a jinja2 safety issue
-        "--ignore=70612",
+        # "--ignore=70612",
     )
 
 
