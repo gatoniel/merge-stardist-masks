@@ -151,9 +151,7 @@ def safety(session: Session) -> None:
         "safety",
         "scan",
         "--key=$SAFETY_API_KEY",
-        "--full-report",
-        # f"--file={requirements}",
-        "--fail-on=0",
+        "--detailed-output",
     )
 
 
