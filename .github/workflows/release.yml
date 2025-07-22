@@ -80,11 +80,11 @@ jobs:
 
       - name: Publish package on PyPI
         if: needs.build.outputs.version-tag
-        uses: pypa/gh-action-pypi-publish@v1.12.3
+        uses: pypa/gh-action-pypi-publish@v1.12.4
 
       - name: Publish package on TestPyPI
         if: "! needs.build.outputs.version-tag"
-        uses: pypa/gh-action-pypi-publish@v1.12.3
+        uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
           repository-url: https://test.pypi.org/legacy/
 
