@@ -549,6 +549,18 @@ files = [
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [[package]]
+name = "cloudpickle"
+version = "3.1.1"
+description = "Pickler class to extend the standard pickle.Pickler functionality"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "cloudpickle-3.1.1-py3-none-any.whl", hash = "sha256:c8c5a44295039331ee9dad40ba100a9c7297b6f988e50e87ccdf3765a668350e"},
+    {file = "cloudpickle-3.1.1.tar.gz", hash = "sha256:b216fa8ae4019d5482a8ac3c95d8f6346115d8835911fd4aefd1a445e4242c64"},
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -1942,6 +1954,24 @@ files = [
     {file = "llvmlite-0.44.0-cp313-cp313-win_amd64.whl", hash = "sha256:2fb7c4f2fb86cbae6dca3db9ab203eeea0e22d73b99bc2341cdf9de93612e930"},
     {file = "llvmlite-0.44.0.tar.gz", hash = "sha256:07667d66a5d150abed9157ab6c0b9393c9356f229784a4385c02f99e94fc94d4"},
 ]
+
+[[package]]
+name = "loky"
+version = "3.5.5"
+description = "A robust implementation of concurrent.futures.ProcessPoolExecutor"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "loky-3.5.5-py3-none-any.whl", hash = "sha256:0cd7655df3579c4d2f5cf9c6c6f222f44a3cffe6a27e29edc10a573c138995af"},
+    {file = "loky-3.5.5.tar.gz", hash = "sha256:0730c7180a35972532f22fe09be600db9d69fed3552aad0410c570acbb47cf41"},
+]
+
+[package.dependencies]
+cloudpickle = "*"
+
+[package.extras]
+tests = ["packaging", "psutil", "pytest"]
 
 [[package]]
 name = "markdown"
@@ -5017,4 +5047,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9.2,<3.13"
-content-hash = "0b1852f81e93e843a2bfc84b05161cbd3806595ce51a4cc23eeea6d5aab92ac8"
+content-hash = "a32ec9adcbf9e35ac3259eb454084b5d9b58e4319b9305682663961120ecb621"
