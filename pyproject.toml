@@ -16,7 +16,7 @@ classifiers = [
 Changelog = "https://github.com/gatoniel/merge-stardist-masks/releases"
 
 [tool.poetry.dependencies]
-python = ">=3.9.2,<3.13"
+python = ">=3.9.2,<3.14"
 stardist = ">=0.7.3,<0.10.0"
 numpy = ">=1.21.0,<2.0"
 edt = ">=2.3,<4.0"
