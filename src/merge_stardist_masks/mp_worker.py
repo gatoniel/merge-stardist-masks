@@ -83,10 +83,10 @@ def _worker(
     max_dists: Tuple[int, ...],
     rays: Rays_Base,
 ) -> None:
-    # global new_probs
-    # global points
-    # global lbl
-    # global dists
+    global new_probs  # noqa: F824
+    global points  # noqa: F824
+    global lbl  # noqa: F824
+    global dists  # noqa: F824
 
     # this_prob = float(new_probs[max_ind])
     new_probs[max_ind] = -1
