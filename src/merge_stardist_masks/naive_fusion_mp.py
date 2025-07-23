@@ -133,7 +133,8 @@ def naive_fusion_anisotropic_grid(
     )
 
     inds_thresh: npt.NDArray[np.int_] = np.argwhere(new_probs > prob_thresh)
-    sort_args = np.argsort(new_probs[*inds_thresh.T])
+    # sort_args = np.argsort(new_probs[*inds_thresh.T])
+    sort_args = np.argsort(new_probs[tuple(i for i in inds_thresh.T)])
 
     inds = [tuple(int(i) for i in inds_thresh[j]) for j in sort_args]
 
