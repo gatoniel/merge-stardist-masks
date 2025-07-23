@@ -20,11 +20,10 @@ from loky import get_reusable_executor  # type: ignore [import-untyped]
 from loky.backend.context import cpu_count  # type: ignore [import-untyped]
 from stardist.rays3d import Rays_Base  # type: ignore [import-untyped]
 
+from .mp_worker import _initializer
+from .mp_worker import _worker
 from .naive_fusion import inflate_array
-from .naive_fusion import my_polyhedron_to_label
-from .naive_fusion import paint_in_without_overlaps
 from .naive_fusion import points_from_grid
-from .naive_fusion import SlicePointReturn
 
 T = TypeVar("T", bound=np.generic)
 
@@ -34,21 +33,6 @@ def in_hyper_square(
 ) -> bool:
     """Tests if two points lie in the same hyper square."""
     return all(abs(i - j) < dist for i, j, dist in zip(ii, jj, dists))
-
-
-def _slice_point(point: npt.ArrayLike, max_dists: Tuple[int, ...]) -> SlicePointReturn:
-    """Calculate the extents of a slice for a given point and its coordinates within."""
-    slices_list = []
-    centered_point = []
-    for a, max_dist in zip(np.array(point), max_dists):
-        diff = a - max_dist
-        if diff < 0:
-            centered_point.append(max_dist + diff)
-            diff = 0
-        else:
-            centered_point.append(max_dist)
-        slices_list.append(slice(diff, a + max_dist + 1))
-    return tuple(slices_list), np.array(centered_point)
 
 
 def naive_fusion_anisotropic_grid(
@@ -156,7 +140,20 @@ def naive_fusion_anisotropic_grid(
 
     if max_parallel is None:
         max_parallel = cpu_count()
-    executor = get_reusable_executor(max_workers=max_parallel)
+    executor = get_reusable_executor(
+        max_workers=max_parallel,
+        initializer=_initializer,
+        initargs=(
+            shm_new_probs.name,
+            probs.dtype,
+            shm_points.name,
+            shm_lbl.name,
+            shm_dists_name,
+            dists_dtype,
+            dists_shape,
+            big_shape,
+        ),
+    )
     atexit.register(executor.shutdown)
 
     current_id = 1
@@ -177,7 +174,6 @@ def naive_fusion_anisotropic_grid(
 
     def try_schedule() -> None:
         nonlocal current_id
-        print("in try_schedule", current_id)
         with lock:
             # list to avoid problems with deletions in loop
             for fut in list(running):
@@ -216,19 +212,10 @@ def naive_fusion_anisotropic_grid(
                 return
 
             for idx in to_schedule:
-                print("in schedule loop", idx)
                 future = executor.submit(
                     _worker,
                     idx,
                     current_id,
-                    shm_new_probs.name,
-                    probs.dtype,
-                    shm_points.name,
-                    shm_lbl.name,
-                    shm_dists_name,
-                    dists_dtype,
-                    dists_shape,
-                    big_shape,
                     grid_array,
                     max_full_overlaps,
                     prob_thresh,
@@ -238,136 +225,13 @@ def naive_fusion_anisotropic_grid(
                 current_id += 1
                 running[future] = idx
                 future.add_done_callback(lambda _: try_schedule())
+            print("Remaining probability voxels to check:", len(inds))
 
-    print(np.min(new_probs), np.max(new_probs))
     try_schedule()
 
     done_event.wait()
-    print(np.min(new_probs), np.max(new_probs))
-    print(lbl.max())
 
     return lbl
-
-
-def _worker(
-    max_ind: Tuple[int, ...],
-    current_id: int,
-    new_probs_name: str,
-    new_probs_dtype: npt.DTypeLike,
-    points_name: str,
-    lbl_name: str,
-    dists_name: str,
-    dists_dtype: npt.DTypeLike,
-    dists_shape: Tuple[int, ...],
-    big_shape: Tuple[int, ...],
-    grid_array: npt.NDArray[np.int_],
-    max_full_overlaps: int,
-    prob_thresh: float,
-    max_dists: Tuple[int, ...],
-    rays: Rays_Base,
-) -> None:
-    print("worker start", max_ind, current_id)
-
-    probs_tuple: Tuple[npt.NDArray[np.double], SharedMemory] = _load_shared_memory(
-        big_shape, new_probs_dtype, new_probs_name
-    )
-    new_probs = probs_tuple[0]
-    shm_new_probs = probs_tuple[1]
-
-    points_tuple: Tuple[npt.NDArray[np.int_], SharedMemory] = _load_shared_memory(
-        big_shape + (3,), np.int_, points_name
-    )
-    points = points_tuple[0]
-    shm_points = points_tuple[1]
-
-    lbl_tuple: Tuple[npt.NDArray[np.intc], SharedMemory] = _load_shared_memory(
-        big_shape, np.intc, lbl_name
-    )
-    lbl = lbl_tuple[0]
-    shm_lbl = lbl_tuple[1]
-    dists_tuple: Tuple[npt.NDArray[np.double], SharedMemory] = _load_shared_memory(
-        dists_shape, dists_dtype, dists_name
-    )
-    dists = dists_tuple[0]
-    shm_dists = dists_tuple[1]
-
-    # this_prob = float(new_probs[max_ind])
-    new_probs[max_ind] = -1
-
-    ind = max_ind + (slice(None),)
-
-    slices, point = _slice_point(points[ind], max_dists)
-    shape_paint = lbl[slices].shape
-
-    dists_ind = tuple(
-        list(points[ind] // grid_array)
-        + [
-            slice(None),
-        ]
-    )
-    new_shape = my_polyhedron_to_label(rays, dists[dists_ind], point, shape_paint) == 1
-
-    current_probs = new_probs[slices]
-    tmp_slices = tuple(
-        list(slices)
-        + [
-            slice(None),
-        ]
-    )
-    current_points = points[tmp_slices]
-
-    full_overlaps = 0
-    while True:
-        if full_overlaps > max_full_overlaps:
-            break
-        probs_within = current_probs[new_shape]
-
-        if np.sum(probs_within > prob_thresh) == 0:
-            break
-
-        max_ind_within = np.argmax(probs_within)
-        # this_prob = float(probs_within[max_ind_within])
-        probs_within[max_ind_within] = -1
-
-        current_probs[new_shape] = probs_within
-
-        current_point = current_points[new_shape, :][max_ind_within, :]
-        dists_ind = tuple(
-            list(current_point // grid_array)
-            + [
-                slice(None),
-            ]
-        )
-        additional_shape: npt.NDArray[np.bool_] = (
-            my_polyhedron_to_label(
-                rays,
-                dists[dists_ind],
-                point + current_point - points[ind],
-                shape_paint,
-            )
-            > 0
-        )
-
-        size_of_current_shape = np.sum(new_shape)
-
-        new_shape = np.logical_or(
-            new_shape,
-            additional_shape,
-        )
-        if size_of_current_shape == np.sum(new_shape):
-            full_overlaps += 1
-        else:
-            full_overlaps = 0
-
-    current_probs[new_shape] = -1
-    new_probs[slices] = current_probs
-
-    lbl[slices] = paint_in_without_overlaps(lbl[slices], new_shape, current_id)
-
-    shm_new_probs.close()
-    shm_points.close()
-    shm_lbl.close()
-    shm_dists.close()
 
 
 def _create_shared_memory(
@@ -378,12 +242,4 @@ def _create_shared_memory(
     a: npt.NDArray[T] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
     atexit.register(shm.close)
     atexit.register(shm.unlink)
-    return a, shm
-
-
-def _load_shared_memory(
-    shape: Tuple[int, ...], dtype: npt.DTypeLike, name: str
-) -> Tuple[npt.NDArray[T], SharedMemory]:
-    shm = SharedMemory(name=name)
-    a: npt.NDArray[T] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
     return a, shm
