@@ -4,15 +4,20 @@ from __future__ import annotations
 
 import atexit
 import threading
-from multiprocessing import shared_memory
+from concurrent.futures import Future
+from multiprocessing.shared_memory import SharedMemory
+from typing import Dict
+from typing import Iterable
+from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import TypeVar
 from typing import Union
 
 import numpy as np
 import numpy.typing as npt
-from loky import get_reusable_executor
-from loky.backend.context import cpu_count
+from loky import get_reusable_executor  # type: ignore [import-untyped]
+from loky.backend.context import cpu_count  # type: ignore [import-untyped]
 from stardist.rays3d import Rays_Base  # type: ignore [import-untyped]
 
 from .naive_fusion import inflate_array
@@ -21,8 +26,12 @@ from .naive_fusion import paint_in_without_overlaps
 from .naive_fusion import points_from_grid
 from .naive_fusion import SlicePointReturn
 
+T = TypeVar("T", bound=np.generic)
 
-def in_hyper_square(ii, jj, dists):
+
+def in_hyper_square(
+    ii: Tuple[int, ...], jj: Tuple[int, ...], dists: Tuple[int, ...]
+) -> bool:
     """Tests if two points lie in the same hyper square."""
     return all(abs(i - j) < dist for i, j, dist in zip(ii, jj, dists))
 
@@ -44,7 +53,7 @@ def _slice_point(point: npt.ArrayLike, max_dists: Tuple[int, ...]) -> SlicePoint
 
 def naive_fusion_anisotropic_grid(
     shm_dists_name: str,
-    dists_dtype,
+    dists_dtype: npt.DTypeLike,
     probs: npt.NDArray[np.double],
     max_dists: Tuple[int, ...],
     rays: Optional[Rays_Base] = None,
@@ -101,14 +110,24 @@ def naive_fusion_anisotropic_grid(
         >>> lbl = naive_fusion_anisotropic_grid(dists, probs, rays, grid=grid)
     """
     shape = probs.shape
-    dists_shape = shape + (len(rays),)
+    n_rays = len(rays)  # type: ignore [arg-type]
+    dists_shape = shape + (n_rays,)
     grid_array = np.array(grid, dtype=int)
 
     big_shape = tuple(s * g for s, g in zip(shape, grid))
 
-    new_probs, shm_new_probs = _create_shared_memory(big_shape, probs.dtype)
+    probs_tuple: Tuple[npt.NDArray[np.double], SharedMemory] = _create_shared_memory(
+        big_shape, probs.dtype
+    )
+    new_probs = probs_tuple[0]
+    shm_new_probs = probs_tuple[1]
     new_probs[:] = inflate_array(probs, grid, default_value=-1)
-    points, shm_points = _create_shared_memory(big_shape + (3,), np.int_)
+
+    points_tuple: Tuple[npt.NDArray[np.int_], SharedMemory] = _create_shared_memory(
+        big_shape + (3,), np.int_
+    )
+    points = points_tuple[0]
+    shm_points = points_tuple[1]
     points[:] = inflate_array(
         points_from_grid(probs.shape, grid), grid, default_value=0
     )
@@ -118,14 +137,17 @@ def naive_fusion_anisotropic_grid(
 
     inds = [tuple(int(i) for i in inds_thresh[j]) for j in sort_args]
 
-    # paint_in = paint_in_without_overlaps
-    lbl, shm_lbl = _create_shared_memory(big_shape, np.intc)
+    lbl_tuple: Tuple[npt.NDArray[np.intc], SharedMemory] = _create_shared_memory(
+        big_shape, np.intc
+    )
+    lbl = lbl_tuple[0]
+    shm_lbl = lbl_tuple[1]
     lbl[:] = 0
 
     # Currently running jobs
-    running = {}
+    running: Dict[Future[None], Tuple[int, ...]] = {}
     # Dict to save already computed conflicting inds
-    conflicting = {}
+    conflicting: Dict[Tuple[Tuple[int, ...], Tuple[int, ...]], bool] = {}
     conflict_max_dists = tuple(2 * i for i in max_dists)
 
     lock = threading.Lock()
@@ -138,7 +160,9 @@ def naive_fusion_anisotropic_grid(
 
     current_id = 1
 
-    def is_conflicting(index, others):
+    def is_conflicting(
+        index: Tuple[int, ...], others: Iterable[Tuple[int, ...]]
+    ) -> bool:
         for other in others:
             key = (index, other)
             try:
@@ -150,7 +174,7 @@ def naive_fusion_anisotropic_grid(
                 return True
         return False
 
-    def try_schedule():
+    def try_schedule() -> None:
         nonlocal current_id
         print("in try_schedule", current_id)
         with lock:
@@ -167,8 +191,8 @@ def naive_fusion_anisotropic_grid(
             if available_slots <= 0:
                 return
 
-            to_schedule = []
-            skipped = []
+            to_schedule: List[Tuple[int, ...]] = []
+            skipped: List[Tuple[int, ...]] = []
 
             while len(to_schedule) < available_slots and inds:
                 idx = inds.pop()
@@ -225,29 +249,46 @@ def naive_fusion_anisotropic_grid(
 
 
 def _worker(
-    max_ind,
-    current_id,
-    new_probs_name,
-    new_probs_dtype,
-    points_name,
-    lbl_name,
-    dists_name,
-    dists_dtype,
-    dists_shape,
-    big_shape,
-    grid_array,
-    max_full_overlaps,
-    prob_thresh,
-    max_dists,
-    rays,
-):
+    max_ind: Tuple[int, ...],
+    current_id: int,
+    new_probs_name: str,
+    new_probs_dtype: npt.DTypeLike,
+    points_name: str,
+    lbl_name: str,
+    dists_name: str,
+    dists_dtype: npt.DTypeLike,
+    dists_shape: Tuple[int, ...],
+    big_shape: Tuple[int, ...],
+    grid_array: npt.NDArray[np.int_],
+    max_full_overlaps: int,
+    prob_thresh: float,
+    max_dists: Tuple[int, ...],
+    rays: Rays_Base,
+) -> None:
     print("worker start", max_ind, current_id)
-    new_probs, shm_new_probs = _load_shared_memory(
+
+    probs_tuple: Tuple[npt.NDArray[np.double], SharedMemory] = _load_shared_memory(
         big_shape, new_probs_dtype, new_probs_name
     )
-    points, shm_points = _load_shared_memory(big_shape + (3,), np.int_, points_name)
-    lbl, shm_lbl = _load_shared_memory(big_shape, np.intc, lbl_name)
-    dists, shm_dists = _load_shared_memory(dists_shape, dists_dtype, dists_name)
+    new_probs = probs_tuple[0]
+    shm_new_probs = probs_tuple[1]
+
+    points_tuple: Tuple[npt.NDArray[np.int_], SharedMemory] = _load_shared_memory(
+        big_shape + (3,), np.int_, points_name
+    )
+    points = points_tuple[0]
+    shm_points = points_tuple[1]
+
+    lbl_tuple: Tuple[npt.NDArray[np.intc], SharedMemory] = _load_shared_memory(
+        big_shape, np.intc, lbl_name
+    )
+    lbl = lbl_tuple[0]
+    shm_lbl = lbl_tuple[1]
+    dists_tuple: Tuple[npt.NDArray[np.double], SharedMemory] = _load_shared_memory(
+        dists_shape, dists_dtype, dists_name
+    )
+    dists = dists_tuple[0]
+    shm_dists = dists_tuple[1]
 
     # this_prob = float(new_probs[max_ind])
     new_probs[max_ind] = -1
@@ -322,27 +363,26 @@ def _worker(
 
     lbl[slices] = paint_in_without_overlaps(lbl[slices], new_shape, current_id)
 
-    _close_and_unlink(shm_new_probs)
-    _close_and_unlink(shm_points)
-    _close_and_unlink(shm_lbl)
-    _close_and_unlink(shm_dists)
+    shm_new_probs.close()
+    shm_points.close()
+    shm_lbl.close()
+    shm_dists.close()
 
 
-def _create_shared_memory(shape, dtype):
+def _create_shared_memory(
+    shape: Tuple[int, ...], dtype: npt.DTypeLike
+) -> Tuple[npt.NDArray[T], SharedMemory]:
     nbytes = int(np.prod(shape) * np.dtype(dtype).itemsize)
-    shm = shared_memory.SharedMemory(create=True, size=nbytes)
-    a = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
+    shm = SharedMemory(create=True, size=nbytes)
+    a: npt.NDArray[T] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
     atexit.register(shm.close)
     atexit.register(shm.unlink)
     return a, shm
 
 
-def _load_shared_memory(shape, dtype, name):
-    shm = shared_memory.SharedMemory(name=name)
-    a = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
+def _load_shared_memory(
+    shape: Tuple[int, ...], dtype: npt.DTypeLike, name: str
+) -> Tuple[npt.NDArray[T], SharedMemory]:
+    shm = SharedMemory(name=name)
+    a: npt.NDArray[T] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
     return a, shm
-
-
-def _close_and_unlink(shm):
-    shm.close()
-    # shm.unlink()

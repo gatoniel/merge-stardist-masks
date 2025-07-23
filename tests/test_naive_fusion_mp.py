@@ -1,5 +1,9 @@
 """Tests for the multiprocessing parts."""
 
+from multiprocessing.shared_memory import SharedMemory
+from typing import Dict
+from typing import Tuple
+
 import numpy as np
 import numpy.typing as npt
 from stardist.geometry.geom3d import polyhedron_to_label  # type: ignore [import-untyped]
@@ -19,7 +23,11 @@ def test_naive_fusion_3d() -> None:
     s = 6
     shape = (s, s, s)
     probs = np.zeros(shape)
-    dists, shm_dists = nf_mp._create_shared_memory(shape + (n_rays,), probs.dtype)
+    dists_tuple: Tuple[npt.NDArray[np.double], SharedMemory] = (
+        nf_mp._create_shared_memory(shape + (n_rays,), probs.dtype)
+    )
+    dists = dists_tuple[0]
+    shm_dists = dists_tuple[1]
 
     # object 1 with several pixels that do not add to the shape
     z0 = s // 3
@@ -69,7 +77,7 @@ def test_naive_fusion_3d() -> None:
     label[label == 3] = 2
 
     assert lbl.shape == label.shape
-    overlaps = {}
+    overlaps: Dict[Tuple[int, int], int] = {}
     for i, j in zip(label.flatten(), lbl.flatten()):
         try:
             overlaps[(i, j)] += 1
@@ -93,12 +101,27 @@ def test_worker() -> None:
     grid = (g, g, g)
     big_shape = tuple(g * s for s in shape)
     dists_shape = shape + (len(rays),)
-    probs, shm_probs = nf_mp._create_shared_memory(shape, float)
-    dists, shm_dists = nf_mp._create_shared_memory(shape + (n_rays,), probs.dtype)
 
-    lbl, shm_lbl = nf_mp._create_shared_memory(big_shape, np.intc)
+    probs = np.zeros(shape)
+
+    dists_tuple: Tuple[npt.NDArray[np.double], SharedMemory] = (
+        nf_mp._create_shared_memory(shape + (n_rays,), probs.dtype)
+    )
+    dists = dists_tuple[0]
+    shm_dists = dists_tuple[1]
+
+    lbl_tuple: Tuple[npt.NDArray[np.intc], SharedMemory] = nf_mp._create_shared_memory(
+        big_shape, np.intc
+    )
+    lbl = lbl_tuple[0]
+    shm_lbl = lbl_tuple[1]
     lbl[:] = 0
-    points, shm_points = nf_mp._create_shared_memory(big_shape + (3,), np.int_)
+
+    points_tuple: Tuple[npt.NDArray[np.int_], SharedMemory] = (
+        nf_mp._create_shared_memory(big_shape + (3,), np.int_)
+    )
+    points = points_tuple[0]
+    shm_points = points_tuple[1]
     points[:] = nf.inflate_array(
         nf.points_from_grid(probs.shape, grid), grid, default_value=0
     )
@@ -127,7 +150,11 @@ def test_worker() -> None:
     dists[z1 - 1, z1, z1, :] = dist
     probs[z1 - 1, z1, z1] = 0.7
 
-    new_probs, shm_new_probs = nf_mp._create_shared_memory(big_shape, probs.dtype)
+    probs_tuple: Tuple[npt.NDArray[np.double], SharedMemory] = (
+        nf_mp._create_shared_memory(big_shape, probs.dtype)
+    )
+    new_probs = probs_tuple[0]
+    shm_new_probs = probs_tuple[1]
     new_probs[:] = nf.inflate_array(probs, grid, default_value=-1)
 
     nf_mp._worker(
