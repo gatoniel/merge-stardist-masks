@@ -13,12 +13,13 @@ import numpy as np
 import numpy.typing as npt
 from loky import get_reusable_executor
 from loky.backend.context import cpu_count
-from naive_fusion import inflate_array
-from naive_fusion import my_polyhedron_to_label
-from naive_fusion import paint_in_without_overlaps
-from naive_fusion import points_from_grid
-from naive_fusion import SlicePointReturn
 from stardist.rays3d import Rays_Base  # type: ignore [import-untyped]
+
+from .naive_fusion import inflate_array
+from .naive_fusion import my_polyhedron_to_label
+from .naive_fusion import paint_in_without_overlaps
+from .naive_fusion import points_from_grid
+from .naive_fusion import SlicePointReturn
 
 
 def in_hyper_square(ii, jj, dists):
@@ -41,7 +42,7 @@ def _slice_point(point: npt.ArrayLike, max_dists: Tuple[int, ...]) -> SlicePoint
     return tuple(slices_list), np.array(centered_point)
 
 
-def mp_naive_fusion_anisotropic_grid(
+def naive_fusion_anisotropic_grid(
     shm_dists_name: str,
     dists_dtype,
     probs: npt.NDArray[np.double],
@@ -100,13 +101,14 @@ def mp_naive_fusion_anisotropic_grid(
         >>> lbl = naive_fusion_anisotropic_grid(dists, probs, rays, grid=grid)
     """
     shape = probs.shape
+    dists_shape = shape + (len(rays),)
     grid_array = np.array(grid, dtype=int)
 
     big_shape = tuple(s * g for s, g in zip(shape, grid))
 
     new_probs, shm_new_probs = _create_shared_memory(big_shape, probs.dtype)
     new_probs[:] = inflate_array(probs, grid, default_value=-1)
-    points, shm_points = _create_shared_memory(big_shape, np.int_)
+    points, shm_points = _create_shared_memory(big_shape + (3,), np.int_)
     points[:] = inflate_array(
         points_from_grid(probs.shape, grid), grid, default_value=0
     )
@@ -150,6 +152,7 @@ def mp_naive_fusion_anisotropic_grid(
 
     def try_schedule():
         nonlocal current_id
+        print("in try_schedule", current_id)
         with lock:
             # list to avoid problems with deletions in loop
             for fut in list(running):
@@ -188,6 +191,7 @@ def mp_naive_fusion_anisotropic_grid(
                 return
 
             for idx in to_schedule:
+                print("in schedule loop", idx)
                 future = executor.submit(
                     _worker,
                     idx,
@@ -198,6 +202,7 @@ def mp_naive_fusion_anisotropic_grid(
                     shm_lbl.name,
                     shm_dists_name,
                     dists_dtype,
+                    dists_shape,
                     big_shape,
                     grid_array,
                     max_full_overlaps,
@@ -209,9 +214,12 @@ def mp_naive_fusion_anisotropic_grid(
                 running[future] = idx
                 future.add_done_callback(lambda _: try_schedule())
 
+    print(np.min(new_probs), np.max(new_probs))
     try_schedule()
 
     done_event.wait()
+    print(np.min(new_probs), np.max(new_probs))
+    print(lbl.max())
 
     return lbl
 
@@ -225,6 +233,7 @@ def _worker(
     lbl_name,
     dists_name,
     dists_dtype,
+    dists_shape,
     big_shape,
     grid_array,
     max_full_overlaps,
@@ -232,12 +241,13 @@ def _worker(
     max_dists,
     rays,
 ):
+    print("worker start", max_ind, current_id)
     new_probs, shm_new_probs = _load_shared_memory(
         big_shape, new_probs_dtype, new_probs_name
     )
-    points, shm_points = _load_shared_memory(big_shape, np.int_, points_name)
+    points, shm_points = _load_shared_memory(big_shape + (3,), np.int_, points_name)
     lbl, shm_lbl = _load_shared_memory(big_shape, np.intc, lbl_name)
-    dists, shm_dists = _load_shared_memory(big_shape, dists_dtype, dists_name)
+    dists, shm_dists = _load_shared_memory(dists_shape, dists_dtype, dists_name)
 
     # this_prob = float(new_probs[max_ind])
     new_probs[max_ind] = -1
@@ -335,4 +345,4 @@ def _load_shared_memory(shape, dtype, name):
 
 def _close_and_unlink(shm):
     shm.close()
-    shm.unlink()
+    # shm.unlink()
