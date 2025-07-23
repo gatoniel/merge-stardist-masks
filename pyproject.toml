@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "merge-stardist-masks"
-version = "0.1.5"
+version = "0.2.0"
 description = "Merge Stardist Masks"
 authors = ["Niklas Breitenbach-Netter <niknett@gmail.com>"]
 license = "MIT"
