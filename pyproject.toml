@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "merge-stardist-masks"
-version = "0.2.0"
+version = "0.2.1"
 description = "Merge Stardist Masks"
 authors = ["Niklas Breitenbach-Netter <niknett@gmail.com>"]
 license = "MIT"
@@ -25,6 +25,7 @@ packaging = ">=24.1,<26.0"
 # Safety issue Vuln ID 76170
 cryptography = ">=44.0.1"
 loky = "^3.5.5"
+tqdm = "^4.67.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.2,<9.0"
