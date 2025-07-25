@@ -96,7 +96,6 @@ def test_worker() -> None:
     inds = manager.dict()
     inds[(0, 0, 0)] = manager.list([(4, 4, 4)])
 
-
     mp_worker._initializer(
         shm_new_probs.name,
         probs.dtype,

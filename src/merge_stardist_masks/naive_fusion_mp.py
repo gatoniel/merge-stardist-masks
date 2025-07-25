@@ -29,7 +29,6 @@ from .naive_fusion import inflate_array
 from .naive_fusion import points_from_grid
 
 
-
 T = TypeVar("T", bound=np.generic)
 
 
