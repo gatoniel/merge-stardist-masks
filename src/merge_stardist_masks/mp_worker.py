@@ -21,8 +21,6 @@ from .naive_fusion import my_polyhedron_to_label
 from .naive_fusion import paint_in_without_overlaps
 from .naive_fusion import SlicePointReturn
 
-# import time
-
 
 T = TypeVar("T", bound=np.generic)
 
@@ -94,7 +92,6 @@ def _initializer(
     lbl = _load_shared_memory(big_shape, np.intc, lbl_name)
     dists = _load_shared_memory(dists_shape, dists_dtype, dists_name)
     max_probs = _load_shared_memory(num_slices, new_probs_dtype, max_probs_name)
-    # print("initialization done")
 
 
 def _slice_point(point: npt.ArrayLike, max_dists: Tuple[int, ...]) -> SlicePointReturn:

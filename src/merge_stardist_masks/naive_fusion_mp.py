@@ -28,7 +28,7 @@ from .mp_worker import _worker
 from .naive_fusion import inflate_array
 from .naive_fusion import points_from_grid
 
-# import time
+
 
 T = TypeVar("T", bound=np.generic)
 
@@ -307,6 +307,7 @@ def naive_fusion_anisotropic_grid(
                 )
                 running[future] = idx
                 future.add_done_callback(lambda _: try_schedule())
+            print("Remaining probability voxels to check:", len(inds))
 
     try_schedule()
 
