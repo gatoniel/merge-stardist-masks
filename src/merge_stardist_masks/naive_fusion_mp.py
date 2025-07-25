@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import atexit
+import multiprocessing
 import threading
 from concurrent.futures import Future
+from math import ceil
 from multiprocessing.shared_memory import SharedMemory
 from typing import Dict
-from typing import Iterable
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -19,11 +20,14 @@ import numpy.typing as npt
 from loky import get_reusable_executor  # type: ignore [import-untyped]
 from loky.backend.context import cpu_count  # type: ignore [import-untyped]
 from stardist.rays3d import Rays_Base  # type: ignore [import-untyped]
+from tqdm import tqdm  # type: ignore [import-untyped]
 
 from .mp_worker import _initializer
+from .mp_worker import _neighbors
 from .mp_worker import _worker
 from .naive_fusion import inflate_array
 from .naive_fusion import points_from_grid
+
 
 T = TypeVar("T", bound=np.generic)
 
@@ -33,6 +37,14 @@ def in_hyper_square(
 ) -> bool:
     """Tests if two points lie in the same hyper square."""
     return all(abs(i - j) < dist for i, j, dist in zip(ii, jj, dists))
+
+
+def _get_slice(i: int, dist: int, max_len: int) -> Tuple[slice, int]:
+    start = i * dist
+    stop = start + dist
+    if stop > max_len:
+        stop = max_len
+    return slice(start, stop), start
 
 
 def naive_fusion_anisotropic_grid(
@@ -116,12 +128,6 @@ def naive_fusion_anisotropic_grid(
         points_from_grid(probs.shape, grid), grid, default_value=0
     )
 
-    inds_thresh: npt.NDArray[np.int_] = np.argwhere(new_probs > prob_thresh)
-    # sort_args = np.argsort(new_probs[*inds_thresh.T])
-    sort_args = np.argsort(new_probs[tuple(i for i in inds_thresh.T)])
-
-    inds = [tuple(int(i) for i in inds_thresh[j]) for j in sort_args]
-
     lbl_tuple: Tuple[npt.NDArray[np.intc], SharedMemory] = _create_shared_memory(
         big_shape, np.intc
     )
@@ -129,19 +135,64 @@ def naive_fusion_anisotropic_grid(
     shm_lbl = lbl_tuple[1]
     lbl[:] = 0
 
-    # Currently running jobs
-    running: Dict[Future[None], Tuple[int, ...]] = {}
-    # Dict to save already computed conflicting inds
-    conflicting: Dict[Tuple[Tuple[int, ...], Tuple[int, ...]], bool] = {}
-    conflict_max_dists = tuple(2 * i for i in max_dists)
+    prob_test = new_probs > prob_thresh
+    slices = {}
 
-    lock = threading.Lock()
-    done_event = threading.Event()
+    max_dists = tuple(d // 2 for d in max_dists)
+    num_slices = tuple(ceil(s / d) for s, d in zip(big_shape, max_dists))
+    max_dists = tuple(d * 2 for d in max_dists)
+
+    block_list = np.zeros(num_slices, dtype=bool)
+    done_list = np.zeros(num_slices, dtype=bool)
+
+    max_probs_tuple: Tuple[npt.NDArray[np.double], SharedMemory] = (
+        _create_shared_memory(num_slices, probs.dtype)
+    )
+    max_probs = max_probs_tuple[0]
+    shm_max_probs = max_probs_tuple[1]
+
+    manager = multiprocessing.Manager()
+    inds = manager.dict()
+    for i in range(num_slices[0]):
+        slice_z, start_z = _get_slice(i, max_dists[0], big_shape[0])
+        for j in range(num_slices[1]):
+            slice_y, start_y = _get_slice(j, max_dists[1], big_shape[1])
+            for k in range(num_slices[2]):
+                t = (i, j, k)
+                slice_x, start_x = _get_slice(k, max_dists[2], big_shape[2])
+                tmp_slice = (slice_z, slice_y, slice_x)
+                slices[t] = tmp_slice
+
+                inds_thresh: npt.NDArray[np.int_] = np.argwhere(
+                    prob_test[tmp_slice]
+                ) + np.array((start_z, start_y, start_x))
+
+                # Only possible in python >= 3.12
+                # sort_args = np.argsort(new_probs[*inds_thresh.T])
+                sort_args = np.argsort(new_probs[tuple(m for m in inds_thresh.T)])
+
+                tmp_inds = [tuple(int(m) for m in inds_thresh[n]) for n in sort_args]
+                inds[t] = manager.list(tmp_inds)
+                if tmp_inds:
+                    max_probs[t] = new_probs[tmp_inds[-1]]
+                else:
+                    max_probs[t] = -1
+                    done_list[t] = True
+
+    current_id = manager.Value("i", 1)
+    current_id_lock = manager.Lock()
 
     if max_parallel is None:
         max_parallel = cpu_count()
+
+    max_simultaneous_possible_workers = np.prod([i / 3 for i in num_slices])
+    if max_parallel > max_simultaneous_possible_workers:
+        max_parallel = int(max_simultaneous_possible_workers)
+        print("Clipped max_parallel to: ", max_parallel)
+
     executor = get_reusable_executor(
         max_workers=max_parallel,
+        timeout=None,
         initializer=_initializer,
         initargs=(
             shm_new_probs.name,
@@ -152,35 +203,63 @@ def naive_fusion_anisotropic_grid(
             dists_dtype,
             dists_shape,
             big_shape,
+            shm_max_probs.name,
+            num_slices,
+            current_id,
+            current_id_lock,
+            inds,
         ),
     )
     atexit.register(executor.shutdown)
 
-    current_id = 1
+    lock = threading.Lock()
+    # Under this lock fall
+    # - running dictionary
+    # - block_list
+    # - done_list array
+    # - pbar progress bar
+    # - current_counter for progress bar
+    done_event = threading.Event()
 
-    def is_conflicting(
-        index: Tuple[int, ...], others: Iterable[Tuple[int, ...]]
-    ) -> bool:
-        for other in others:
-            key = (index, other)
+    running: Dict[Future[None], Tuple[int, ...]] = {}
+
+    total_inds = sum(len(inds_list) for inds_list in inds.values())
+    pbar = tqdm(total=total_inds)
+    current_counter = total_inds
+
+    def is_free(index: Tuple[int, ...]) -> bool:
+        my_prob = max_probs[index]
+        for neighbor in _neighbors(index):
             try:
-                val = conflicting[key]
-            except KeyError:
-                val = in_hyper_square(index, other, conflict_max_dists)
-                conflicting[key] = val
-            if val:
-                return True
-        return False
+                if block_list[neighbor] or my_prob < max_probs[neighbor]:
+                    return False
+            except IndexError:
+                # Out of array neighbors
+                pass
+        return True
 
     def try_schedule() -> None:
-        nonlocal current_id
+        nonlocal current_counter
         with lock:
             # list to avoid problems with deletions in loop
             for fut in list(running):
                 if fut.done():
+                    # free block_list again
+                    idx = running[fut]
+                    for neighbor in _neighbors(idx):
+                        try:
+                            block_list[neighbor] = False
+                            if max_probs[neighbor] < 0:
+                                done_list[neighbor] = True
+                        except IndexError:
+                            pass
                     del running[fut]
 
-            if not inds and not running:
+            tmp_counter = sum(len(inds_list) for inds_list in inds.values())
+            pbar.update(current_counter - tmp_counter)
+            current_counter = tmp_counter
+
+            if done_list.all() and not running:
                 done_event.set()
                 return
 
@@ -189,40 +268,42 @@ def naive_fusion_anisotropic_grid(
                 return
 
             to_schedule: List[Tuple[int, ...]] = []
-            skipped: List[Tuple[int, ...]] = []
 
-            while len(to_schedule) < available_slots and inds:
-                idx = inds.pop()
-
-                if new_probs[idx] < 0:
-                    continue
-
-                if (
-                    is_conflicting(idx, to_schedule)
-                    or is_conflicting(idx, running.values())
-                    or is_conflicting(idx, skipped)
-                ):
-                    skipped.append(idx)
-                    continue
-                to_schedule.append(idx)
-            inds.extend(reversed(skipped))
-
-            if not inds and not running and not to_schedule:
-                done_event.set()
+            unblocked: npt.NDArray[np.int_] = np.argwhere(
+                np.logical_not(np.logical_or(block_list, done_list))
+            )
+            if len(unblocked) == 0:
                 return
 
+            # sorted is from least to highest probs. We want to start with
+            # highest values. reverse is avoided in the argsorts above,
+            # because there we reverse the list automatically in the worker
+            # by using .pop().
+            for j in reversed(np.argsort(max_probs[tuple(i for i in unblocked.T)])):
+                idx = tuple(int(i) for i in unblocked[j])
+
+                if not is_free(idx):
+                    continue
+
+                to_schedule.append(idx)
+                if len(to_schedule) >= available_slots:
+                    break
+
             for idx in to_schedule:
+                for neighbor in _neighbors(idx):
+                    try:
+                        block_list[neighbor] = True
+                    except IndexError:
+                        pass
                 future = executor.submit(
                     _worker,
                     idx,
-                    current_id,
                     grid_array,
                     max_full_overlaps,
                     prob_thresh,
                     max_dists,
                     rays,
                 )
-                current_id += 1
                 running[future] = idx
                 future.add_done_callback(lambda _: try_schedule())
             print("Remaining probability voxels to check:", len(inds))

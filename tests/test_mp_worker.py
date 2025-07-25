@@ -1,5 +1,6 @@
 """Test the initializer and worker separately."""
 
+import multiprocessing
 from multiprocessing.shared_memory import SharedMemory
 from typing import Tuple
 
@@ -79,6 +80,22 @@ def test_worker() -> None:
     shm_new_probs = probs_tuple[1]
     new_probs[:] = nf.inflate_array(probs, grid, default_value=-1)
 
+    num_slices = (2, 2, 2)
+    max_probs_tuple: Tuple[npt.NDArray[np.double], SharedMemory] = (
+        nf_mp._create_shared_memory(num_slices, probs.dtype)
+    )
+    max_probs = max_probs_tuple[0]
+    shm_max_probs = max_probs_tuple[1]
+    max_probs[:] = -1
+
+    manager = multiprocessing.Manager()
+
+    current_id = manager.Value("i", 1)
+    current_id_lock = manager.Lock()
+
+    inds = manager.dict()
+    inds[(0, 0, 0)] = manager.list([(4, 4, 4)])
+
     mp_worker._initializer(
         shm_new_probs.name,
         probs.dtype,
@@ -88,11 +105,15 @@ def test_worker() -> None:
         dists.dtype,
         dists_shape,
         big_shape,
+        shm_max_probs.name,
+        num_slices,
+        current_id,
+        current_id_lock,
+        inds,
     )
 
     mp_worker._worker(
-        (4, 4, 4),
-        1,
+        (0, 0, 0),
         np.array(grid),
         10,
         0.5,
