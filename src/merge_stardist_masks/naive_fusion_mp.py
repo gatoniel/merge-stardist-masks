@@ -347,6 +347,10 @@ def naive_fusion_anisotropic_grid(
             print(done_list)
             print(max_probs)
             print(unblocked)
+            np.save("dump_block_list.npy", block_list)
+            np.save("dump_done_list.npy", done_list)
+            np.save("dump_max_probs.npy", max_probs)
+            np.save("dump_unblocked.npy", unblocked)
             print(list(reversed(np.argsort(max_probs[tuple(i for i in unblocked.T)]))))
 
     try_schedule()
