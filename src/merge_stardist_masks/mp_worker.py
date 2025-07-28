@@ -231,7 +231,7 @@ def _worker(
 
 
 def _update_neighbor(
-    neighbor_inds: multiprocessing.managers.ListProxy[Tuple[int, ...]]
+    neighbor_inds: multiprocessing.managers.ListProxy[Tuple[int, ...]],
 ) -> Tuple[float, float]:
     global new_probs  # noqa: F824
     while neighbor_inds:
