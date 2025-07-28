@@ -269,10 +269,12 @@ def naive_fusion_anisotropic_grid(
         t0 = time.perf_counter()
         with lock:
             # list to avoid problems with deletions in loop
+            finished_jobs = []
             for fut in list(running):
                 if fut.done():
                     # free block_list again
                     idx = running[fut]
+                    finished_jobs.append(idx)
                     for neighbor in neighbors[idx]:
                         block_list[neighbor] = False
                         if max_probs[neighbor] < 0:
@@ -352,6 +354,7 @@ def naive_fusion_anisotropic_grid(
             np.save("dump_max_probs.npy", max_probs)
             np.save("dump_unblocked.npy", unblocked)
             print(list(reversed(np.argsort(max_probs[tuple(i for i in unblocked.T)]))))
+            print(finished_jobs)
 
     try_schedule()
 
