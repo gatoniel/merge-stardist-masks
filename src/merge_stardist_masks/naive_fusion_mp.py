@@ -345,9 +345,9 @@ def naive_fusion_anisotropic_grid(
         print(
             "Currently running for",
             mins_run,
-            "minutes of",
+            "minutes. Remaining: ",
             remaining_time,
-            "minutes expected total time.",
+            "minutes",
         )
         assert ((max_probs < 0) == done_list).all()
 
