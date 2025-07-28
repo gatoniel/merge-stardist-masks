@@ -5,6 +5,7 @@ from __future__ import annotations
 import atexit
 import multiprocessing
 import threading
+import time
 from concurrent.futures import Future
 from itertools import product
 from math import ceil
@@ -21,12 +22,13 @@ import numpy.typing as npt
 from loky import get_reusable_executor  # type: ignore [import-untyped]
 from loky.backend.context import cpu_count  # type: ignore [import-untyped]
 from stardist.rays3d import Rays_Base  # type: ignore [import-untyped]
-from tqdm import tqdm  # type: ignore [import-untyped]
 
 from .mp_worker import _initializer
 from .mp_worker import _worker
 from .naive_fusion import inflate_array
 from .naive_fusion import points_from_grid
+
+# from tqdm import tqdm  # type: ignore [import-untyped]
 
 
 T = TypeVar("T", bound=np.generic)
@@ -251,8 +253,9 @@ def naive_fusion_anisotropic_grid(
     running: Dict[Future[None], Tuple[int, ...]] = {}
 
     total_inds = remaining_inds.sum()
-    pbar = tqdm(total=total_inds)
-    current_counter = total_inds
+    start_time = time.perf_counter()
+    # pbar = tqdm(total=total_inds)
+    # current_counter = total_inds
 
     def is_free(index: Tuple[int, ...]) -> bool:
         my_prob = max_probs[index]
@@ -262,22 +265,24 @@ def naive_fusion_anisotropic_grid(
         return True
 
     def try_schedule() -> None:
-        nonlocal current_counter
+        # nonlocal current_counter
+        t0 = time.perf_counter()
         with lock:
+            # finished_jobs = []
             # list to avoid problems with deletions in loop
             for fut in list(running):
                 if fut.done():
                     # free block_list again
                     idx = running[fut]
+                    # finished_jobs.append(idx)
                     for neighbor in neighbors[idx]:
                         block_list[neighbor] = False
                         if max_probs[neighbor] < 0:
                             done_list[neighbor] = True
                     del running[fut]
 
-            tmp_counter = remaining_inds.sum()
-            pbar.update(current_counter - tmp_counter)
-            current_counter = tmp_counter
+            # pbar.update(current_counter - tmp_counter)
+            # current_counter = tmp_counter
 
             if done_list.all() and not running:
                 done_event.set()
@@ -306,12 +311,17 @@ def naive_fusion_anisotropic_grid(
                     continue
 
                 to_schedule.append(idx)
+
+                # This needs to be here! Cannot be deferred to bottom loop as this
+                # is important to know for the next jobs to add in this current
+                # scheduling trial.
+                for neighbor in neighbors[idx]:
+                    block_list[neighbor] = True
+
                 if len(to_schedule) >= available_slots:
                     break
 
             for idx in to_schedule:
-                for neighbor in neighbors[idx]:
-                    block_list[neighbor] = True
                 future = executor.submit(
                     _worker,
                     idx,
@@ -323,6 +333,41 @@ def naive_fusion_anisotropic_grid(
                 )
                 running[future] = idx
                 future.add_done_callback(lambda _: try_schedule())
+        t1 = time.perf_counter()
+        total_time = t1 - t0
+        tmp_counter = remaining_inds.sum()
+        print("SCHEDULDER took", total_time, "seconds")
+        print("REMAINING positions:", tmp_counter, "/", total_inds)
+        print("JOBS: Submitted", len(to_schedule), ", Running:", len(running))
+        mins_run = (time.perf_counter() - start_time) / 60
+        speed = (total_inds - tmp_counter) / mins_run
+        remaining_time = tmp_counter / speed
+        print(
+            "Currently running for",
+            mins_run,
+            "minutes. Remaining: ",
+            remaining_time,
+            "minutes",
+        )
+
+        # if len(to_schedule) == len(running) == 0:
+        #     assert ((max_probs < 0) == done_list).all()
+        #     print(block_list)
+        #     print(done_list)
+        #     print(max_probs)
+        #     print(unblocked)
+        #     np.save("dump_block_list.npy", block_list)
+        #     np.save("dump_done_list.npy", done_list)
+        #     np.save("dump_max_probs.npy", max_probs)
+        #     np.save("dump_unblocked.npy", unblocked)
+        #     print(
+        #         list(
+        #             reversed(
+        #                 np.argsort(max_probs[tuple(i for i in unblocked.T)])
+        #             )
+        #         )
+        #     )
+        #     print(finished_jobs)
 
     try_schedule()
 
