@@ -329,13 +329,18 @@ def naive_fusion_anisotropic_grid(
         t1 = time.perf_counter()
         total_time = t1 - t0
         tmp_counter = remaining_inds.sum()
-        print("SCHEDULDER: took", total_time, "seconds")
-        print("PROCESSED positions:", tmp_counter, "/", total_inds)
+        print("SCHEDULDER took", total_time, "seconds")
+        print("REMAINING positions:", tmp_counter, "/", total_inds)
         print("JOBS: Submitted", len(to_schedule), ", Running:", len(running))
+        mins_run = (time.perf_counter() - start_time) / 60
+        speed = (total_inds - tmp_counter) / mins_run
+        remaining_time = tmp_counter / speed
         print(
             "Currently running for",
-            (start_time - time.perf_counter()) / 60,
-            "minutes",
+            mins_run,
+            "minutes of",
+            remaining_time,
+            "minutes expected total time.",
         )
         if len(to_schedule) == len(running) == 0:
             print(block_list)
