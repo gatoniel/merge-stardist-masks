@@ -311,12 +311,17 @@ def naive_fusion_anisotropic_grid(
                     continue
 
                 to_schedule.append(idx)
+
+                # This needs to be here! Cannot be deferred to bottom loop as this
+                # is important to know for the next jobs to add in this current
+                # scheduling trial.
+                for neighbor in neighbors[idx]:
+                    block_list[neighbor] = True
+
                 if len(to_schedule) >= available_slots:
                     break
 
             for idx in to_schedule:
-                for neighbor in neighbors[idx]:
-                    block_list[neighbor] = True
                 future = executor.submit(
                     _worker,
                     idx,
