@@ -331,6 +331,12 @@ def naive_fusion_anisotropic_grid(
         print("SCHEDULDER: took", total_time, "seconds")
         print("PROCESSED positions:", tmp_counter, "/", total_inds)
         print("JOBS: Submitted", len(to_schedule), ", Running:", len(running))
+        if len(to_schedule) == len(running) == 0:
+            print(block_list)
+            print(done_list)
+            print(max_probs)
+            print(unblocked)
+            print(list(reversed(np.argsort(max_probs[tuple(i for i in unblocked.T)]))))
 
     try_schedule()
 
