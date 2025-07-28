@@ -253,6 +253,7 @@ def naive_fusion_anisotropic_grid(
     running: Dict[Future[None], Tuple[int, ...]] = {}
 
     total_inds = remaining_inds.sum()
+    start_time = time.perf_counter()
     # pbar = tqdm(total=total_inds)
     # current_counter = total_inds
 
@@ -331,6 +332,11 @@ def naive_fusion_anisotropic_grid(
         print("SCHEDULDER: took", total_time, "seconds")
         print("PROCESSED positions:", tmp_counter, "/", total_inds)
         print("JOBS: Submitted", len(to_schedule), ", Running:", len(running))
+        print(
+            "Currently running for",
+            (start_time - time.perf_counter()) / 60,
+            "minutes",
+        )
         if len(to_schedule) == len(running) == 0:
             print(block_list)
             print(done_list)
