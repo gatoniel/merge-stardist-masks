@@ -6,6 +6,7 @@ import atexit
 import multiprocessing
 import threading
 from concurrent.futures import Future
+from itertools import product
 from math import ceil
 from multiprocessing.shared_memory import SharedMemory
 from typing import Dict
@@ -23,7 +24,6 @@ from stardist.rays3d import Rays_Base  # type: ignore [import-untyped]
 from tqdm import tqdm  # type: ignore [import-untyped]
 
 from .mp_worker import _initializer
-from .mp_worker import _neighbors
 from .mp_worker import _worker
 from .naive_fusion import inflate_array
 from .naive_fusion import points_from_grid
@@ -47,6 +47,17 @@ def _get_slice(i: int, dist: int, max_len: int) -> Tuple[slice, int]:
     return slice(start, stop), start
 
 
+def _neighbors(index: Tuple[int, ...], shape: Tuple[int, ...]) -> List[Tuple[int, ...]]:
+    positions: Tuple[List[int], ...] = ([], [], [])
+    for i in range(3):
+        for j in range(-1, 2):
+            val = index[i] + j
+            if val < 0 or val >= shape[i]:
+                continue
+            positions[i].append(val)
+    return list(product(*positions))
+
+
 def naive_fusion_anisotropic_grid(
     shm_dists_name: str,
     dists_dtype: npt.DTypeLike,
@@ -57,6 +68,7 @@ def naive_fusion_anisotropic_grid(
     grid: Tuple[int, ...] = (2, 2, 2),
     max_full_overlaps: int = 2,
     max_parallel: Optional[int] = None,
+    # verbose: bool = False,
 ) -> Union[npt.NDArray[np.uint16], npt.NDArray[np.intc]]:
     """Merge overlapping masks given by dists, probs, rays for anisotropic grid.
 
@@ -151,6 +163,14 @@ def naive_fusion_anisotropic_grid(
     max_probs = max_probs_tuple[0]
     shm_max_probs = max_probs_tuple[1]
 
+    remaining_inds_tuple: Tuple[npt.NDArray[np.intc], SharedMemory] = (
+        _create_shared_memory(num_slices, np.intc)
+    )
+    remaining_inds = remaining_inds_tuple[0]
+    shm_remaining_inds = remaining_inds_tuple[1]
+
+    neighbors: Dict[Tuple[int, ...], List[Tuple[int, ...]]] = {}
+
     manager = multiprocessing.Manager()
     inds = manager.dict()
     for i in range(num_slices[0]):
@@ -178,6 +198,10 @@ def naive_fusion_anisotropic_grid(
                 else:
                     max_probs[t] = -1
                     done_list[t] = True
+
+                remaining_inds[t] = len(tmp_inds)
+
+                neighbors[t] = _neighbors(t, num_slices)
 
     current_id = manager.Value("i", 1)
     current_id_lock = manager.Lock()
@@ -208,6 +232,9 @@ def naive_fusion_anisotropic_grid(
             current_id,
             current_id_lock,
             inds,
+            neighbors,
+            shm_remaining_inds.name,
+            # verbose,
         ),
     )
     atexit.register(executor.shutdown)
@@ -223,19 +250,15 @@ def naive_fusion_anisotropic_grid(
 
     running: Dict[Future[None], Tuple[int, ...]] = {}
 
-    total_inds = sum(len(inds_list) for inds_list in inds.values())
+    total_inds = remaining_inds.sum()
     pbar = tqdm(total=total_inds)
     current_counter = total_inds
 
     def is_free(index: Tuple[int, ...]) -> bool:
         my_prob = max_probs[index]
-        for neighbor in _neighbors(index):
-            try:
-                if block_list[neighbor] or my_prob < max_probs[neighbor]:
-                    return False
-            except IndexError:
-                # Out of array neighbors
-                pass
+        for neighbor in neighbors[index]:
+            if block_list[neighbor] or my_prob < max_probs[neighbor]:
+                return False
         return True
 
     def try_schedule() -> None:
@@ -246,16 +269,13 @@ def naive_fusion_anisotropic_grid(
                 if fut.done():
                     # free block_list again
                     idx = running[fut]
-                    for neighbor in _neighbors(idx):
-                        try:
-                            block_list[neighbor] = False
-                            if max_probs[neighbor] < 0:
-                                done_list[neighbor] = True
-                        except IndexError:
-                            pass
+                    for neighbor in neighbors[idx]:
+                        block_list[neighbor] = False
+                        if max_probs[neighbor] < 0:
+                            done_list[neighbor] = True
                     del running[fut]
 
-            tmp_counter = sum(len(inds_list) for inds_list in inds.values())
+            tmp_counter = remaining_inds.sum()
             pbar.update(current_counter - tmp_counter)
             current_counter = tmp_counter
 
@@ -290,11 +310,8 @@ def naive_fusion_anisotropic_grid(
                     break
 
             for idx in to_schedule:
-                for neighbor in _neighbors(idx):
-                    try:
-                        block_list[neighbor] = True
-                    except IndexError:
-                        pass
+                for neighbor in neighbors[idx]:
+                    block_list[neighbor] = True
                 future = executor.submit(
                     _worker,
                     idx,
@@ -306,7 +323,6 @@ def naive_fusion_anisotropic_grid(
                 )
                 running[future] = idx
                 future.add_done_callback(lambda _: try_schedule())
-            print("Remaining probability voxels to check:", len(inds))
 
     try_schedule()
 

@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import atexit
 import multiprocessing
-from itertools import product
 from multiprocessing.shared_memory import SharedMemory
+from typing import Dict
 from typing import List
 from typing import Tuple
 from typing import TypeVar
@@ -35,6 +35,8 @@ inds: multiprocessing.managers.DictProxy[
     Tuple[int, ...], multiprocessing.managers.ListProxy[Tuple[int, ...]]
 ]
 max_probs: npt.NDArray[np.double]
+all_neighbors: Dict[Tuple[int, ...], List[Tuple[int, ...]]]
+remaining_inds: npt.NDArray[np.intc]
 
 
 def _load_shared_memory(
@@ -44,17 +46,6 @@ def _load_shared_memory(
     atexit.register(shm.close)
     a: npt.NDArray[T] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
     return a
-
-
-def _neighbors(index: Tuple[int, ...]) -> List[Tuple[int, ...]]:
-    positions: Tuple[List[int], ...] = ([], [], [])
-    for i in range(3):
-        for j in range(-1, 2):
-            val = index[i] + j
-            if val < 0:
-                continue
-            positions[i].append(val)
-    return list(product(*positions))
 
 
 def _initializer(
@@ -73,6 +64,8 @@ def _initializer(
     inds_: multiprocessing.managers.DictProxy[
         Tuple[int, ...], multiprocessing.managers.ListProxy[Tuple[int, ...]]
     ],
+    all_neighbors_: Dict[Tuple[int, ...], List[Tuple[int, ...]]],
+    remaining_inds_name: str,
 ) -> None:
     global new_probs
     global points
@@ -82,6 +75,8 @@ def _initializer(
     global current_id
     global current_id_lock
     global inds
+    global all_neighbors
+    global remaining_inds
     current_id = current_id_
     current_id_lock = current_id_lock_
     inds = inds_
@@ -92,6 +87,8 @@ def _initializer(
     lbl = _load_shared_memory(big_shape, np.intc, lbl_name)
     dists = _load_shared_memory(dists_shape, dists_dtype, dists_name)
     max_probs = _load_shared_memory(num_slices, new_probs_dtype, max_probs_name)
+    remaining_inds = _load_shared_memory(num_slices, np.intc, remaining_inds_name)
+    all_neighbors = all_neighbors_
 
 
 def _slice_point(point: npt.ArrayLike, max_dists: Tuple[int, ...]) -> SlicePointReturn:
@@ -107,6 +104,16 @@ def _slice_point(point: npt.ArrayLike, max_dists: Tuple[int, ...]) -> SlicePoint
             centered_point.append(max_dist)
         slices_list.append(slice(diff, a + max_dist + 1))
     return tuple(slices_list), np.array(centered_point)
+
+
+def _get_current_id(
+    current_id: multiprocessing.managers.ValueProxy[int],
+    current_id_lock: multiprocessing.managers.AcquirerProxy,  # type: ignore [name-defined]
+) -> int:
+    with current_id_lock:
+        my_id = current_id.value
+        current_id.value += 1
+    return my_id
 
 
 def _worker(
@@ -125,27 +132,24 @@ def _worker(
     global current_id  # noqa: F824
     global current_id_lock  # noqa: F824
     global inds  # noqa: F824
+    global all_neighbors  # noqa: F824
+    global remaining_inds  # noqa: F824
 
-    my_neighbors = _neighbors(idx)
     this_inds = inds[idx]
+    neighbors = all_neighbors[idx]
 
     while this_inds:
         max_ind = this_inds.pop()
         if new_probs[max_ind] < 0:
             continue
 
-        for neighbor in my_neighbors:
-            try:
-                if new_probs[max_ind] < max_probs[neighbor]:
-                    this_inds.append(max_ind)
-                    return
-            except IndexError:
-                pass
+        for neighbor in neighbors:
+            if new_probs[max_ind] < max_probs[neighbor]:
+                this_inds.append(max_ind)
+                return
 
-        new_probs[max_ind] = -1
-        with current_id_lock:
-            my_id = current_id.value
-            current_id.value += 1
+        new_probs[max_ind] = -1.0
+        my_id = _get_current_id(current_id, current_id_lock)
 
         ind = max_ind + (slice(None),)
 
@@ -181,7 +185,6 @@ def _worker(
                 break
 
             max_ind_within = np.argmax(probs_within)
-            # this_prob = float(probs_within[max_ind_within])
             probs_within[max_ind_within] = -1
 
             current_probs[new_shape] = probs_within
@@ -214,23 +217,29 @@ def _worker(
             else:
                 full_overlaps = 0
 
-        current_probs[new_shape] = -1
+        current_probs[new_shape] = -1.0
         new_probs[slices] = current_probs
 
         lbl[slices] = paint_in_without_overlaps(lbl[slices], new_shape, my_id)
 
-        for neighbor in my_neighbors:
-            try:
-                neighbor_inds = inds[neighbor]
-            except KeyError:
-                continue
-            while neighbor_inds:
-                pos = neighbor_inds.pop()
-                if new_probs[pos] > 0:
-                    neighbor_inds.append(pos)
-                    break
-            if neighbor_inds:
-                max_probs[neighbor] = new_probs[neighbor_inds[-1]]
-            else:
-                max_probs[neighbor] = -1
-    max_probs[idx] = -1
+        for neighbor in neighbors:
+            max_probs[neighbor], remaining_inds[neighbor] = _update_neighbor(
+                inds[neighbor]
+            )
+
+    max_probs[idx] = -1.0
+
+
+def _update_neighbor(
+    neighbor_inds: multiprocessing.managers.ListProxy[Tuple[int, ...]],
+) -> Tuple[float, float]:
+    global new_probs  # noqa: F824
+    while neighbor_inds:
+        idx = neighbor_inds.pop()
+        if new_probs[idx] > 0:
+            neighbor_inds.append(idx)
+            break
+    if neighbor_inds:
+        return new_probs[neighbor_inds[-1]], len(neighbor_inds)
+    else:
+        return -1.0, 0
