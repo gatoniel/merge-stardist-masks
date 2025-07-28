@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import atexit
 import multiprocessing
+import time
 from multiprocessing.shared_memory import SharedMemory
 from typing import Dict
 from typing import List
@@ -110,9 +111,13 @@ def _get_current_id(
     current_id: multiprocessing.managers.ValueProxy[int],
     current_id_lock: multiprocessing.managers.AcquirerProxy,  # type: ignore [name-defined]
 ) -> int:
+    t0 = time.perf_counter()
     with current_id_lock:
         my_id = current_id.value
         current_id.value += 1
+    t1 = time.perf_counter()
+    total_time = t1 - t0
+    print("ACQUIRING LOCK took", total_time, "seconds")
     return my_id
 
 
@@ -139,6 +144,7 @@ def _worker(
     neighbors = all_neighbors[idx]
 
     while this_inds:
+        t0 = time.perf_counter()
         max_ind = this_inds.pop()
         if new_probs[max_ind] < 0:
             continue
@@ -221,11 +227,17 @@ def _worker(
         new_probs[slices] = current_probs
 
         lbl[slices] = paint_in_without_overlaps(lbl[slices], new_shape, my_id)
+        # t1 = time.perf_counter()
 
         for neighbor in neighbors:
             max_probs[neighbor], remaining_inds[neighbor] = _update_neighbor(
                 inds[neighbor]
             )
+        t2 = time.perf_counter()
+        total_time = t2 - t0
+        print("WORKER took", total_time, "seconds")
+
+        total_time = t2 - t0
 
     max_probs[idx] = -1.0
 

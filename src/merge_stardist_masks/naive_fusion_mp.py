@@ -5,6 +5,7 @@ from __future__ import annotations
 import atexit
 import multiprocessing
 import threading
+import time
 from concurrent.futures import Future
 from itertools import product
 from math import ceil
@@ -21,12 +22,13 @@ import numpy.typing as npt
 from loky import get_reusable_executor  # type: ignore [import-untyped]
 from loky.backend.context import cpu_count  # type: ignore [import-untyped]
 from stardist.rays3d import Rays_Base  # type: ignore [import-untyped]
-from tqdm import tqdm  # type: ignore [import-untyped]
 
 from .mp_worker import _initializer
 from .mp_worker import _worker
 from .naive_fusion import inflate_array
 from .naive_fusion import points_from_grid
+
+# from tqdm import tqdm  # type: ignore [import-untyped]
 
 
 T = TypeVar("T", bound=np.generic)
@@ -251,8 +253,8 @@ def naive_fusion_anisotropic_grid(
     running: Dict[Future[None], Tuple[int, ...]] = {}
 
     total_inds = remaining_inds.sum()
-    pbar = tqdm(total=total_inds)
-    current_counter = total_inds
+    # pbar = tqdm(total=total_inds)
+    # current_counter = total_inds
 
     def is_free(index: Tuple[int, ...]) -> bool:
         my_prob = max_probs[index]
@@ -262,7 +264,8 @@ def naive_fusion_anisotropic_grid(
         return True
 
     def try_schedule() -> None:
-        nonlocal current_counter
+        # nonlocal current_counter
+        t0 = time.perf_counter()
         with lock:
             # list to avoid problems with deletions in loop
             for fut in list(running):
@@ -275,9 +278,8 @@ def naive_fusion_anisotropic_grid(
                             done_list[neighbor] = True
                     del running[fut]
 
-            tmp_counter = remaining_inds.sum()
-            pbar.update(current_counter - tmp_counter)
-            current_counter = tmp_counter
+            # pbar.update(current_counter - tmp_counter)
+            # current_counter = tmp_counter
 
             if done_list.all() and not running:
                 done_event.set()
@@ -323,6 +325,12 @@ def naive_fusion_anisotropic_grid(
                 )
                 running[future] = idx
                 future.add_done_callback(lambda _: try_schedule())
+        t1 = time.perf_counter()
+        total_time = t1 - t0
+        tmp_counter = remaining_inds.sum()
+        print("SCHEDULDER: took", total_time, "seconds")
+        print("PROCESSED positions:", tmp_counter, "/", total_inds)
+        print("JOBS: Submitted", len(to_schedule), ", Running:", len(running))
 
     try_schedule()
 
