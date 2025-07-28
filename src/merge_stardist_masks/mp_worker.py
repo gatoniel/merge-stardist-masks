@@ -237,8 +237,6 @@ def _worker(
         total_time = t2 - t0
         print("WORKER took", total_time, "seconds")
 
-        total_time = t2 - t0
-
     max_probs[idx] = -1.0
 
 
