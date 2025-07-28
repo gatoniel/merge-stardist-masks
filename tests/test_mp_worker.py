@@ -2,6 +2,7 @@
 
 import multiprocessing
 from multiprocessing.shared_memory import SharedMemory
+from typing import Dict
 from typing import List
 from typing import Tuple
 
@@ -96,7 +97,7 @@ def test_worker() -> None:
     shm_remaining_inds = remaining_inds_tuple[1]
     remaining_inds[0, 0, 0] = 1
 
-    neighbors: Tuple[List[Tuple[int, ...]]] = {}
+    neighbors: Dict[Tuple[int, ...], List[Tuple[int, ...]]] = {}
     neighbors[(0, 0, 0)] = nf_mp._neighbors((0, 0, 0), num_slices)
 
     manager = multiprocessing.Manager()

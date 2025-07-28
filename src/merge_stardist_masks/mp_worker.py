@@ -8,6 +8,7 @@ from __future__ import annotations
 import atexit
 import multiprocessing
 from multiprocessing.shared_memory import SharedMemory
+from typing import Dict
 from typing import List
 from typing import Tuple
 from typing import TypeVar
@@ -34,7 +35,7 @@ inds: multiprocessing.managers.DictProxy[
     Tuple[int, ...], multiprocessing.managers.ListProxy[Tuple[int, ...]]
 ]
 max_probs: npt.NDArray[np.double]
-all_neighbors: Tuple[List[Tuple[int, ...]]]
+all_neighbors: Dict[Tuple[int, ...], List[Tuple[int, ...]]]
 remaining_inds: npt.NDArray[np.intc]
 
 
@@ -63,7 +64,7 @@ def _initializer(
     inds_: multiprocessing.managers.DictProxy[
         Tuple[int, ...], multiprocessing.managers.ListProxy[Tuple[int, ...]]
     ],
-    all_neighbors_: Tuple[List[Tuple[int, ...]]],
+    all_neighbors_: Dict[Tuple[int, ...], List[Tuple[int, ...]]],
     remaining_inds_name: str,
 ) -> None:
     global new_probs
@@ -105,7 +106,10 @@ def _slice_point(point: npt.ArrayLike, max_dists: Tuple[int, ...]) -> SlicePoint
     return tuple(slices_list), np.array(centered_point)
 
 
-def _get_current_id(current_id, current_id_lock) -> int:
+def _get_current_id(
+    current_id: multiprocessing.managers.ValueProxy[int],
+    current_id_lock: multiprocessing.managers.AcquirerProxy,  # type: ignore [name-defined]
+) -> int:
     with current_id_lock:
         my_id = current_id.value
         current_id.value += 1
@@ -226,7 +230,9 @@ def _worker(
     max_probs[idx] = -1.0
 
 
-def _update_neighbor(neighbor_inds) -> float:
+def _update_neighbor(
+    neighbor_inds: multiprocessing.managers.ListProxy[Tuple[int, ...]]
+) -> Tuple[float, float]:
     global new_probs
     while neighbor_inds:
         idx = neighbor_inds.pop()

@@ -169,7 +169,7 @@ def naive_fusion_anisotropic_grid(
     remaining_inds = remaining_inds_tuple[0]
     shm_remaining_inds = remaining_inds_tuple[1]
 
-    neighbors: Tuple[List[Tuple[int, ...]]] = {}
+    neighbors: Dict[Tuple[int, ...], List[Tuple[int, ...]]] = {}
 
     manager = multiprocessing.Manager()
     inds = manager.dict()
