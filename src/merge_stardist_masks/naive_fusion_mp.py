@@ -268,13 +268,13 @@ def naive_fusion_anisotropic_grid(
         # nonlocal current_counter
         t0 = time.perf_counter()
         with lock:
+            # finished_jobs = []
             # list to avoid problems with deletions in loop
-            finished_jobs = []
             for fut in list(running):
                 if fut.done():
                     # free block_list again
                     idx = running[fut]
-                    finished_jobs.append(idx)
+                    # finished_jobs.append(idx)
                     for neighbor in neighbors[idx]:
                         block_list[neighbor] = False
                         if max_probs[neighbor] < 0:
