@@ -2,6 +2,7 @@
 
 import multiprocessing
 from multiprocessing.shared_memory import SharedMemory
+from typing import List
 from typing import Tuple
 
 import numpy as np
@@ -88,6 +89,16 @@ def test_worker() -> None:
     shm_max_probs = max_probs_tuple[1]
     max_probs[:] = -1
 
+    remaining_inds_tuple: Tuple[npt.NDArray[np.intc], SharedMemory] = (
+        nf_mp._create_shared_memory(num_slices, np.intc)
+    )
+    remaining_inds = remaining_inds_tuple[0]
+    shm_remaining_inds = remaining_inds_tuple[1]
+    remaining_inds[0, 0, 0] = 1
+
+    neighbors: Tuple[List[Tuple[int, ...]]] = {}
+    neighbors[(0, 0, 0)] = nf_mp._neighbors((0, 0, 0), num_slices)
+
     manager = multiprocessing.Manager()
 
     current_id = manager.Value("i", 1)
@@ -95,6 +106,10 @@ def test_worker() -> None:
 
     inds = manager.dict()
     inds[(0, 0, 0)] = manager.list([(4, 4, 4)])
+    for neighbor in neighbors[(0, 0, 0)]:
+        if neighbor == (0, 0, 0):
+            continue
+        inds[neighbor] = manager.list([])
 
     mp_worker._initializer(
         shm_new_probs.name,
@@ -110,6 +125,8 @@ def test_worker() -> None:
         current_id,
         current_id_lock,
         inds,
+        neighbors,
+        shm_remaining_inds.name,
     )
 
     mp_worker._worker(
