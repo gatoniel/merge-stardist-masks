@@ -16,14 +16,12 @@ classifiers = [
 Changelog = "https://github.com/gatoniel/merge-stardist-masks/releases"
 
 [tool.poetry.dependencies]
-python = ">=3.9.2,<3.13"
-stardist = ">=0.7.3,<0.10.0"
-numpy = ">=1.21.0,<2.0"
+python = ">=3.10,<3.13"
+stardist = ">=0.9.2,<0.10.0"
+numpy = ">=1.21.0,<3.0"
 edt = ">=2.3,<4.0"
 requests = ">=2.31.0"
 packaging = ">=24.1,<26.0"
-# Safety issue Vuln ID 76170
-cryptography = ">=44.0.1"
 loky = "^3.5.5"
 tqdm = "^4.67.1"
 
