@@ -22,13 +22,6 @@ numpy = ">=1.21.0,<3.0"
 edt = ">=2.3,<4.0"
 requests = ">=2.31.0"
 packaging = ">=24.1,<26.0"
-# Safety issue Vuln ID 76170
-cryptography = ">=44.0.1"
-loky = "^3.5.5"
-tqdm = "^4.67.1"
-# Safety issues
-fonttools = ">=4.61.0"
-keras = ">=3.12.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.2,<9.0"
