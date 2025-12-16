@@ -16,7 +16,7 @@ classifiers = [
 Changelog = "https://github.com/gatoniel/merge-stardist-masks/releases"
 
 [tool.poetry.dependencies]
-python = ">=3.9.2,<3.13"
+python = ">=3.10,<3.13"
 stardist = ">=0.9.2,<0.10.0"
 numpy = ">=1.21.0,<3.0"
 edt = ">=2.3,<4.0"
@@ -26,6 +26,9 @@ packaging = ">=24.1,<26.0"
 cryptography = ">=44.0.1"
 loky = "^3.5.5"
 tqdm = "^4.67.1"
+# Safety issues
+fonttools = ">=4.61.0"
+keras = ">=3.12.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.2,<9.0"
