@@ -73,7 +73,9 @@ class OptimizedStackedTimepointsData2D(StackedTimepointsDataBase):
 
         self.sd_mode = "opencl" if self.use_gpu else "cpp"
 
-    def __getitem__(self, i: int) -> Tuple[
+    def __getitem__(
+        self, i: int
+    ) -> Tuple[
         Tuple[npt.NDArray[np.float32]],
         Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]],
     ]:

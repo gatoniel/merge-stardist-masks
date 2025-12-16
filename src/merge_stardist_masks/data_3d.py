@@ -23,7 +23,9 @@ from .touching_pixels import touching_pixels_3d
 class OptimizedStarDistData3D(StarDistData3D):  # type: ignore [misc]
     """Overwrite __getitem__ function to use different prob and weights."""
 
-    def __getitem__(self, i: int) -> Union[
+    def __getitem__(
+        self, i: int
+    ) -> Union[
         Tuple[
             Tuple[npt.NDArray[np.float32]],
             Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]],
