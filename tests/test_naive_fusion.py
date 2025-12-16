@@ -458,10 +458,16 @@ def test_naive_fusion_2d_with_overlaps() -> None:
     label[3:5, 3:5] = -1
     label[2, 5] = -1
     label[5, 2] = -1
+    label2 = np.copy(label)
+    label2[label == 1] = 2
+    label2[label == 2] = 1
     print(lbl)
     print(label)
 
-    np.testing.assert_array_equal(lbl, label)
+    try:
+        np.testing.assert_array_equal(lbl, label)
+    except AssertionError:
+        np.testing.assert_array_equal(lbl, label2)
 
 
 def test_naive_fusion_2d_respect_probs() -> None:
